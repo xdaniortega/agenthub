@@ -216,16 +216,23 @@ export async function runWizard(): Promise<WizardAnswers> {
     ]);
 
     // ── OASF Skills — separate prompt with explanatory context ──
-    console.log(chalk.bold("\n  📋 OASF Skills"));
-    console.log(chalk.gray("  OASF (Open Agent Specification Framework) skills are on-chain metadata that make"));
-    console.log(chalk.gray("  your agent discoverable by other agents and tools via the ERC-8004 registry."));
-    console.log(chalk.gray("  They are taxonomy identifiers — NOT the same as Claude skills or LLM capabilities."));
+    console.log(chalk.bold("\n  📋 OASF Skills (On-Chain Registration)"));
+    console.log(chalk.gray("  ─────────────────────────────────────────────────────────────────"));
+    console.log(chalk.gray("  OASF (Open Agent Specification Framework) skills are on-chain metadata"));
+    console.log(chalk.gray("  stored in the ERC-8004 registry that make your agent discoverable by"));
+    console.log(chalk.gray("  other agents and tools on the network."));
+    console.log();
+    console.log(chalk.yellow("  ⚠️  These are NOT Claude/AI model skills — they are blockchain identifiers."));
+    console.log(chalk.yellow("  ⚠️  Only select skills your agent genuinely supports. Publishing inaccurate"));
+    console.log(chalk.yellow("     skills can damage your agent's on-chain reputation score."));
+    console.log();
     if (answers.llmProvider === "openai") {
-        console.log(chalk.gray("  Selected skills will be injected as context into your agent's system prompt."));
-    } else {
-        console.log(chalk.gray("  Selected skills will also be written to .claude/CLAUDE.md in your project."));
+        console.log(chalk.gray("  → Selected skills will be injected as context into your agent's system prompt."));
     }
-    console.log(chalk.gray("  Browse the full taxonomy: https://schema.oasf.outshift.com/0.8.0\n"));
+    console.log(chalk.gray("  → All agents get a .claude/CLAUDE.md with web3 skills reference (Claude-native"));
+    console.log(chalk.gray("    auto-load, OpenAI agents can use it as context too)."));
+    console.log(chalk.gray("  → Browse taxonomy: https://schema.oasf.outshift.com/0.8.0"));
+    console.log(chalk.gray("  ─────────────────────────────────────────────────────────────────\n"));
 
     const { skills } = await inquirer.prompt<{ skills: string[] }>([
         {

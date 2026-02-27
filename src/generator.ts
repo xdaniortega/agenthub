@@ -24,6 +24,7 @@ import { generateDataFeed, generateOracleTools } from "./templates/arbitrum/data
 import { generateTaskRunner } from "./templates/arbitrum/task-runner.js";
 import { upsertAgent } from "./registry.js";
 import { ARCHETYPES } from "./archetypes/index.js";
+import { SKILL_CATEGORIES } from "./skills-catalog.js";
 
 /**
  * Archetype-specific extra files written after the base scaffold.
@@ -58,9 +59,8 @@ export async function generateProject(answers: WizardAnswers): Promise<void> {
         await fs.mkdir(path.join(projectPath, ".well-known"), { recursive: true });
     }
 
-    if (answers.llmProvider === "claude") {
-        await fs.mkdir(path.join(projectPath, ".claude"), { recursive: true });
-    }
+    // All agents get .claude/ — auto-loaded by Claude Code, usable as context by any LLM
+    await fs.mkdir(path.join(projectPath, ".claude"), { recursive: true });
 
     const chain = CHAINS[answers.chain];
     const archetype = ARCHETYPES[answers.archetype ?? "custom"];
@@ -96,12 +96,12 @@ export async function generateProject(answers: WizardAnswers): Promise<void> {
     // All agents include give-feedback script
     await writeFile(projectPath, "src/give-feedback.ts", generateGiveFeedbackScript());
 
-    // For Claude agents: write .claude/CLAUDE.md with OASF skills context
-    // This file is auto-loaded by Claude Code, giving it full agent context.
-    // Note: OASF skills ≠ Claude skills — they are on-chain ERC-8004 metadata.
-    if (answers.llmProvider === "claude") {
-        await writeFile(projectPath, ".claude/CLAUDE.md", generateClaudeMd(answers, chain));
-    }
+    // .claude/CLAUDE.md — generated for ALL agents regardless of LLM provider.
+    // For Claude: auto-loaded natively by Claude Code as project context.
+    // For OpenAI: useful as documentation; selected OASF skills are also injected
+    //             into the system prompt in agent.ts automatically.
+    // Note: OASF skills ≠ Claude/AI skills — they are on-chain ERC-8004 identifiers.
+    await writeFile(projectPath, ".claude/CLAUDE.md", generateClaudeMd(answers, chain));
 
     if (hasFeature(answers, "a2a")) {
         await writeFile(projectPath, "src/a2a-server.ts", generateA2AServer(answers));
@@ -170,40 +170,71 @@ dist/
 }
 
 /**
- * Generate .claude/CLAUDE.md for Claude-powered agents.
+ * Generate .claude/CLAUDE.md for ALL agents (OpenAI and Claude).
  *
- * This file is auto-loaded by Claude Code when working inside the agent repo,
- * giving it full context about the agent's purpose, chain, and OASF skills.
+ * For Claude agents: auto-loaded by Claude Code when working in this repo.
+ * For OpenAI agents: useful as documentation; selected OASF skills are also
+ *   injected automatically into the agent.ts system prompt.
  *
- * IMPORTANT: OASF skills are on-chain ERC-8004 taxonomy identifiers that make
- * the agent discoverable. They are NOT the same as Claude skills — they are
- * blockchain metadata, not Claude Code capabilities.
+ * IMPORTANT: OASF skills are on-chain ERC-8004 blockchain identifiers that make
+ * the agent discoverable. They are NOT Claude/AI model capabilities — they are
+ * immutable metadata registered on-chain. Selecting inaccurate skills affects
+ * your agent's on-chain reputation score.
  */
 function generateClaudeMd(answers: WizardAnswers, chain: (typeof CHAINS)[keyof typeof CHAINS]): string {
-    const skills = answers.skills ?? [];
-    const skillSection =
-        skills.length > 0
-            ? `## OASF Skills (On-Chain Registered Capabilities)
-
-> **Important**: These are OASF (Open Agent Specification Framework) taxonomy identifiers
-> registered on the ERC-8004 blockchain. They are **NOT** Claude skills — they are
-> on-chain metadata that make this agent discoverable by other agents and tools.
->
-> Browse taxonomy: https://schema.oasf.outshift.com/0.8.0
-
-${skills.map((s) => `- \`${s}\``).join("\n")}
-`
-            : `## OASF Skills
-
-No OASF skills selected. Add skills in \`src/register.ts\` before registering on-chain.
-Browse taxonomy: https://schema.oasf.outshift.com/0.8.0
-`;
-
+    const selectedSkills = answers.skills ?? [];
+    const llmLabel =
+        answers.llmProvider === "claude"
+            ? `Claude — ${answers.llmModel ?? "claude-sonnet-4-6"} (Anthropic)`
+            : `OpenAI — ${answers.llmModel ?? "gpt-4o-mini"}`;
+    const llmKeyVar = answers.llmProvider === "claude" ? "ANTHROPIC_API_KEY" : "OPENAI_API_KEY";
     const features = answers.features.join(", ") || "none";
+
+    // Build selected OASF skills section
+    const selectedSection =
+        selectedSkills.length > 0
+            ? selectedSkills.map((s) => `- \`${s}\``).join("\n")
+            : "_No OASF skills selected. Add skills in `src/register.ts` before registering on-chain._";
+
+    // Build web3 reference skills from the catalog (ethSkills + EVM-specific categories)
+    const web3RefCategories = SKILL_CATEGORIES.filter((c) =>
+        ["DeFi & Finance", "Smart Contracts", "Data & Analytics", "Infrastructure & DevOps",
+         "Ethereum Dev (ethskills.com)", "Arbitrum (arbitrum-dapp-skill)"].includes(c.name)
+    );
+    const web3RefSection = web3RefCategories
+        .map((cat) => {
+            // Neutralise category names so no specific L2 is singled out
+            const displayName = cat.name
+                .replace("Arbitrum (arbitrum-dapp-skill)", "EVM L2 dApp Skills")
+                .replace("Ethereum Dev (ethskills.com)", "Ethereum Dev Skills");
+            const skillLines = cat.skills.map((s) => `  - ${s.name} — \`${s.value}\``).join("\n");
+            return `**${displayName}**\n${skillLines}`;
+        })
+        .join("\n\n");
+
+    const llmUsageNote =
+        answers.llmProvider === "claude"
+            ? `This file is **automatically loaded** by Claude Code when you open this project.
+Claude will have full context about the agent's purpose, chain, wallet, and OASF skills.`
+            : `This file is loaded as **reference documentation** for your OpenAI agent.
+The OASF skills you selected are also injected into \`src/agent.ts\` as a system prompt prefix,
+so the LLM is aware of its declared on-chain capabilities at inference time.`;
 
     return `# ${answers.agentName} — Agent Context
 
-${answers.agentDescription}
+> ${answers.agentDescription}
+
+---
+
+## How This File Is Used
+
+${llmUsageNote}
+
+> **Important distinction**: OASF skills listed below are **on-chain blockchain identifiers**
+> registered via ERC-8004. They are NOT Claude/AI model skills or capabilities.
+> They exist on the blockchain and make your agent discoverable by other agents.
+
+---
 
 ## Agent Details
 
@@ -212,20 +243,42 @@ ${answers.agentDescription}
 | Name | ${answers.agentName} |
 | Chain | ${chain.name} |
 | Wallet | \`${answers.agentWallet}\` |
-| LLM | Claude (${answers.llmModel ?? "claude-sonnet-4-6"}) |
+| LLM Provider | ${llmLabel} |
 | Features | ${features} |
 | Standard | ERC-8004 |
 
-${skillSection}
+---
+
+## OASF Skills — Registered On-Chain Capabilities
+
+> ⚠️ These skills are stored on the **${chain.name} blockchain** and affect your agent's
+> **on-chain reputation**. Only register skills your agent genuinely supports.
+> Taxonomy reference: https://schema.oasf.outshift.com/0.8.0
+
+${selectedSection}
+
+---
+
+## Web3 Skills Reference
+
+The following skills are available in the OASF taxonomy for web3 and EVM agents.
+Use these as reference when expanding your agent's capabilities.
+Skills with URL values point to skill specification documents fetchable by other agents.
+
+${web3RefSection}
+
+---
+
 ## Architecture
 
 \`\`\`
 src/
-├── agent.ts         — LLM logic (Claude via @anthropic-ai/sdk)
+├── agent.ts         — LLM logic (${answers.llmProvider === "claude" ? "Claude via @anthropic-ai/sdk" : "OpenAI via openai SDK"})
 ├── register.ts      — On-chain ERC-8004 registration${answers.features.includes("a2a") ? "\n├── a2a-server.ts   — A2A server (agent-to-agent communication)\n└── a2a-client.ts   — A2A testing client" : ""}${answers.features.includes("mcp") ? "\n└── mcp-server.ts   — MCP server (tool exposure)" : ""}
+└── give-feedback.ts — Submit on-chain feedback for other agents
 \`\`\`
 
-## Development Commands
+## Commands
 
 \`\`\`bash
 npm run register      # Register agent identity on-chain (ERC-8004)
@@ -234,7 +287,7 @@ ${answers.features.includes("a2a") ? "npm run start:a2a     # Start A2A server o
 
 ## Environment Variables
 
-- \`ANTHROPIC_API_KEY\` — Required for LLM inference
+- \`${llmKeyVar}\` — LLM inference
 - \`PRIVATE_KEY\` — Wallet private key for on-chain transactions
 - \`PINATA_JWT\` — IPFS storage for agent metadata
 - \`RPC_URL\` — RPC endpoint for ${chain.name}
@@ -244,6 +297,6 @@ ${answers.features.includes("a2a") ? "npm run start:a2a     # Start A2A server o
 - [ERC-8004 Standard](https://eips.ethereum.org/EIPS/eip-8004)
 - [8004scan Explorer](https://www.8004scan.io/)
 - [OASF Taxonomy](https://schema.oasf.outshift.com/0.8.0)
-- [Anthropic SDK Docs](https://docs.anthropic.com/en/api/getting-started)
+- [Ethereum Skills](https://ethskills.com)
 `;
 }
