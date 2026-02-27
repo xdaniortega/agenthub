@@ -129,10 +129,23 @@ function printNextSteps(agentName: string, projectDir: string, features: string[
 export async function runInit(): Promise<void> {
     console.log(chalk.bold.cyan("\n  ⚡ AgentHub — Agent Examples\n"));
 
-    // Auto-select the only available agent type (no prompt needed)
-    const agentType = AGENT_TYPES[0];
+    // ── Step 1: Agent type ────────────────────────────────────────────────────
+    const { typeId } = await inquirer.prompt<{ typeId: string }>([
+        {
+            type: "list",
+            name: "typeId",
+            message: "Choose an agent type:",
+            choices: AGENT_TYPES.map((t) => ({
+                name: `${t.emoji}  ${t.label.padEnd(26)}  ${chalk.gray(t.tagline)}`,
+                value: t.id,
+                short: `${t.emoji} ${t.label}`,
+            })),
+        },
+    ]);
 
-    // ── Step 1: Agent name ────────────────────────────────────────────────────
+    const agentType = AGENT_TYPES.find((t) => t.id === typeId)!;
+
+    // ── Step 2: Agent name ────────────────────────────────────────────────────
     const { agentName } = await inquirer.prompt<{ agentName: string }>([
         {
             type: "input",
