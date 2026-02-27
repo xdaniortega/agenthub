@@ -6,8 +6,6 @@ import { runMainMenu } from "./menu.js";
 import { runWizard, hasFeature } from "./wizard.js";
 import type { WizardAnswers } from "./wizard.js";
 import { generateProject } from "./generator.js";
-import { runGiveFeedback } from "./commands/give-feedback.js";
-import { runReadFeedback } from "./commands/read-feedback.js";
 
 const NEXT_STEPS: Array<{
     when: (a: WizardAnswers) => boolean;
@@ -95,12 +93,14 @@ async function main() {
 
     const action = await runMainMenu();
 
-    if (action === "give-feedback") {
-        await runGiveFeedback();
+    if (action === "communicate") {
+        const { runCommunicate } = await import("./commands/communicate.js");
+        await runCommunicate();
         return;
     }
-    if (action === "read-feedback") {
-        await runReadFeedback();
+    if (action === "import") {
+        const { runImportAgent } = await import("./commands/import-agent.js");
+        await runImportAgent();
         return;
     }
 
