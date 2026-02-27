@@ -63,6 +63,7 @@ export interface TestAgentOptions {
     a2aStreaming?: boolean;
     projectName?: string;
     archetype?: string;
+    skills?: string[];
 }
 
 /**
@@ -90,6 +91,8 @@ export async function generateTestAgent(options: TestAgentOptions): Promise<stri
         chain: options.chain,
         trustModels: ['reputation'],
         agentWallet: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0',
+        skills: options.skills ?? [],
+        domains: [],
     };
     
     await generateProject(answers);
