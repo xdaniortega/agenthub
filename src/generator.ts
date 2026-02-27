@@ -24,7 +24,7 @@ import { generateDataFeed, generateOracleTools } from "./templates/arbitrum/data
 import { generateTaskRunner } from "./templates/arbitrum/task-runner.js";
 import { upsertAgent } from "./registry.js";
 import { ARCHETYPES } from "./archetypes/index.js";
-import { SKILL_CATEGORIES } from "./skills-catalog.js";
+import { WEB3_SKILL_CATEGORIES } from "./skills-catalog.js";
 
 /**
  * Archetype-specific extra files written after the base scaffold.
@@ -182,7 +182,18 @@ dist/
  * your agent's on-chain reputation score.
  */
 function generateClaudeMd(answers: WizardAnswers, chain: (typeof CHAINS)[keyof typeof CHAINS]): string {
-    const selectedSkills = answers.skills ?? [];
+    const oasfSkills = (answers.skills ?? []).filter(
+        (s) => !s.startsWith("http") && !s.includes("/") === false && !s.startsWith("defi/") &&
+               !s.startsWith("smart_contracts/") && !s.startsWith("data_analysis/") &&
+               !s.startsWith("infrastructure/") && !s.startsWith("nft/") && !s.startsWith("gaming/")
+    );
+    // web3Skills are stored separately; fall back to filtering from skills[] for agents
+    // created before web3Skills field was added
+    const web3Skills = answers.web3Skills ?? (answers.skills ?? []).filter(
+        (s) => s.startsWith("http") || s.startsWith("defi/") || s.startsWith("smart_contracts/") ||
+               s.startsWith("data_analysis/") || s.startsWith("infrastructure/") ||
+               s.startsWith("nft/") || s.startsWith("gaming/")
+    );
     const llmLabel =
         answers.llmProvider === "claude"
             ? `Claude — ${answers.llmModel ?? "claude-sonnet-4-6"} (Anthropic)`
@@ -190,20 +201,21 @@ function generateClaudeMd(answers: WizardAnswers, chain: (typeof CHAINS)[keyof t
     const llmKeyVar = answers.llmProvider === "claude" ? "ANTHROPIC_API_KEY" : "OPENAI_API_KEY";
     const features = answers.features.join(", ") || "none";
 
-    // Build selected OASF skills section
-    const selectedSection =
-        selectedSkills.length > 0
-            ? selectedSkills.map((s) => `- \`${s}\``).join("\n")
-            : "_No OASF skills selected. Add skills in `src/register.ts` before registering on-chain._";
+    // OASF skills section
+    const oasfSection =
+        oasfSkills.length > 0
+            ? oasfSkills.map((s) => `- \`${s}\``).join("\n")
+            : "_No OASF AI capability skills selected._";
 
-    // Build web3 reference skills from the catalog (ethSkills + EVM-specific categories)
-    const web3RefCategories = SKILL_CATEGORIES.filter((c) =>
-        ["DeFi & Finance", "Smart Contracts", "Data & Analytics", "Infrastructure & DevOps",
-         "Ethereum Dev (ethskills.com)", "Arbitrum (arbitrum-dapp-skill)"].includes(c.name)
-    );
-    const web3RefSection = web3RefCategories
+    // Web3 skills section (selected by user)
+    const web3SelectedSection =
+        web3Skills.length > 0
+            ? web3Skills.map((s) => `- \`${s}\``).join("\n")
+            : "_No web3 skills loaded._";
+
+    // Web3 reference — all available categories for the LLM to draw from
+    const web3RefSection = WEB3_SKILL_CATEGORIES
         .map((cat) => {
-            // Neutralise category names so no specific L2 is singled out
             const displayName = cat.name
                 .replace("Arbitrum (arbitrum-dapp-skill)", "EVM L2 dApp Skills")
                 .replace("Ethereum Dev (ethskills.com)", "Ethereum Dev Skills");
@@ -215,10 +227,9 @@ function generateClaudeMd(answers: WizardAnswers, chain: (typeof CHAINS)[keyof t
     const llmUsageNote =
         answers.llmProvider === "claude"
             ? `This file is **automatically loaded** by Claude Code when you open this project.
-Claude will have full context about the agent's purpose, chain, wallet, and OASF skills.`
-            : `This file is loaded as **reference documentation** for your OpenAI agent.
-The OASF skills you selected are also injected into \`src/agent.ts\` as a system prompt prefix,
-so the LLM is aware of its declared on-chain capabilities at inference time.`;
+Claude will have full context about the agent's purpose, chain, wallet, and skills.`
+            : `This file is **reference documentation** for your OpenAI agent.
+Web3 skills and OASF skills are also injected into \`src/agent.ts\` as system prompt context.`;
 
     return `# ${answers.agentName} — Agent Context
 
@@ -230,10 +241,6 @@ so the LLM is aware of its declared on-chain capabilities at inference time.`;
 
 ${llmUsageNote}
 
-> **Important distinction**: OASF skills listed below are **on-chain blockchain identifiers**
-> registered via ERC-8004. They are NOT Claude/AI model skills or capabilities.
-> They exist on the blockchain and make your agent discoverable by other agents.
-
 ---
 
 ## Agent Details
@@ -243,28 +250,32 @@ ${llmUsageNote}
 | Name | ${answers.agentName} |
 | Chain | ${chain.name} |
 | Wallet | \`${answers.agentWallet}\` |
-| LLM Provider | ${llmLabel} |
+| LLM | ${llmLabel} |
 | Features | ${features} |
 | Standard | ERC-8004 |
 
 ---
 
-## OASF Skills — Registered On-Chain Capabilities
+## OASF AI Capability Skills (On-Chain Registered)
 
-> ⚠️ These skills are stored on the **${chain.name} blockchain** and affect your agent's
-> **on-chain reputation**. Only register skills your agent genuinely supports.
-> Taxonomy reference: https://schema.oasf.outshift.com/0.8.0
+> These classify **what AI tasks** your agent performs (language, vision, audio, reasoning).
+> They are stored on **${chain.name}** via ERC-8004 and affect your **on-chain reputation**.
+> Only select skills your agent genuinely supports.
+> Full taxonomy: https://schema.oasf.outshift.com/0.8.0
 
-${selectedSection}
+${oasfSection}
 
 ---
 
-## Web3 Skills Reference
+## Web3 Knowledge Skills (Agent Context)
 
-The following skills are available in the OASF taxonomy for web3 and EVM agents.
-Use these as reference when expanding your agent's capabilities.
-Skills with URL values point to skill specification documents fetchable by other agents.
+> These are **domain knowledge bases** (ethSkills, EVM dApp skills) loaded into your agent's
+> context. They are separate from OASF taxonomy — they give the LLM web3 expertise.
 
+### Selected Web3 Skills
+${web3SelectedSection}
+
+### All Available Web3 Skills (Reference)
 ${web3RefSection}
 
 ---

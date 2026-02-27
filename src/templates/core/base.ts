@@ -414,15 +414,31 @@ main().catch((error) => {
 export function generateAgentTs(answers: WizardAnswers, systemPrompt?: string): string {
     const llmModel = answers.llmModel ?? (answers.llmProvider === "claude" ? "claude-sonnet-4-6" : "gpt-4o-mini");
 
-    // For OpenAI: OASF skills are prepended to the system prompt so the LLM is aware of its capabilities
-    // For Claude: OASF skills go to .claude/CLAUDE.md (loaded automatically by Claude Code)
+    // For OpenAI: skills are prepended to the system prompt as context.
+    //   - OASF skills (language/*, vision/*, etc.) = declared AI capabilities
+    //   - Web3 skills (defi/*, smart_contracts/*, http URLs) = domain knowledge
+    // For Claude: skills go to .claude/CLAUDE.md (auto-loaded by Claude Code)
     const buildSystemPromptStr = (): string => {
         const base = systemPrompt ?? "You are a helpful AI assistant registered on the ERC-8004 protocol. Be concise and helpful.";
         if (answers.llmProvider !== "openai") return base;
-        const skills = answers.skills ?? [];
-        if (skills.length === 0) return base;
-        const skillLines = skills.map((s) => `- ${s}`).join("\n");
-        return `You have the following OASF (Open Agent Specification Framework) capabilities registered on-chain via ERC-8004:\n${skillLines}\n\nThese registered skills make you discoverable by other agents on the network.\n\n---\n\n${base}`;
+
+        const allSkills = answers.skills ?? [];
+        const web3Skills = answers.web3Skills ?? allSkills.filter(
+            (s) => s.startsWith("http") || s.startsWith("defi/") || s.startsWith("smart_contracts/") ||
+                   s.startsWith("data_analysis/") || s.startsWith("infrastructure/") ||
+                   s.startsWith("nft/") || s.startsWith("gaming/")
+        );
+        const oasfSkills = allSkills.filter((s) => !web3Skills.includes(s));
+
+        const parts: string[] = [];
+        if (oasfSkills.length > 0) {
+            parts.push(`Your registered OASF AI capabilities (ERC-8004 on-chain):\n${oasfSkills.map((s) => `- ${s}`).join("\n")}`);
+        }
+        if (web3Skills.length > 0) {
+            parts.push(`Your web3 domain knowledge skills:\n${web3Skills.map((s) => `- ${s}`).join("\n")}`);
+        }
+        if (parts.length === 0) return base;
+        return `${parts.join("\n\n")}\n\n---\n\n${base}`;
     };
 
     const finalSystemPrompt = buildSystemPromptStr();

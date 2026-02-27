@@ -5,7 +5,7 @@ import path from "path";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { CHAINS, type ChainKey, type TrustModel } from "./config.js";
 import { ARCHETYPES } from "./archetypes/index.js";
-import { SKILL_CATEGORIES } from "./skills-catalog.js";
+import { WEB3_SKILL_CATEGORIES, OASF_OFFICIAL_CATEGORIES, type SkillCategory } from "./skills-catalog.js";
 
 function getAvailableDir(baseDir: string): string {
     if (baseDir === ".") return baseDir;
@@ -22,71 +22,86 @@ function getAvailableDir(baseDir: string): string {
     return newDir;
 }
 
-// ── OASF Skills nested browser ────────────────────────────────────────────────
-// Shows categories first; selecting one opens a skill checkbox for that category.
-// Pressing Enter on the skill list saves choices and returns to categories.
-// "Done" at the bottom of the category list confirms the whole selection.
+// ── Nested skills browser (reusable) ─────────────────────────────────────────
+// Shows categories first; selecting one opens a skills checkbox for that
+// category. Pressing Enter saves and goes back to the category list.
+// Selecting "Done" at the bottom finalises the selection.
 
-async function promptOASFSkills(): Promise<string[]> {
-    // Track selections per category so choices persist when navigating back
+async function promptNestedSkills(
+    categories: SkillCategory[],
+    title: string
+): Promise<string[]> {
     const selectedByCategory = new Map<string, string[]>();
 
     while (true) {
-        // Build category list with per-category selection count
+        const totalSelected = [...selectedByCategory.values()].reduce(
+            (sum, v) => sum + v.length,
+            0
+        );
+        const summary = totalSelected > 0 ? chalk.green(` (${totalSelected} selected)`) : "";
+
         const categoryChoices = [
-            ...SKILL_CATEGORIES.map((cat) => {
+            ...categories.map((cat) => {
                 const count = selectedByCategory.get(cat.name)?.length ?? 0;
+                // Neutralise category label for display (no specific L2 branding)
+                const displayName = cat.name
+                    .replace("Arbitrum (arbitrum-dapp-skill)", "EVM L2 dApp Skills")
+                    .replace("Ethereum Dev (ethskills.com)", "Ethereum Dev Skills");
                 const badge =
                     count > 0
                         ? chalk.green(` [${count} selected]`)
                         : chalk.gray(` — ${cat.skills.length} skills`);
                 return {
-                    name: `${cat.name}${badge}`,
-                    value: cat.name,
-                    short: cat.name,
+                    name: `${displayName}${badge}`,
+                    value: cat.name, // internal key stays original for data consistency
+                    short: displayName,
                 };
             }),
-            new inquirer.Separator("  ─────────────────────────────────────────"),
+            new inquirer.Separator("  ─────────────────────────────────────────────"),
             {
-                name: chalk.bold.cyan("✓  Done — confirm selection and continue"),
+                name: chalk.bold.cyan("✓  Done — save and continue"),
                 value: "__done__",
                 short: "Done",
             },
         ];
 
-        const totalSelected = [...selectedByCategory.values()].reduce((sum, v) => sum + v.length, 0);
-        const summary = totalSelected > 0 ? chalk.green(` (${totalSelected} selected so far)`) : "";
-
         const { category } = await inquirer.prompt<{ category: string }>([
             {
                 type: "list",
                 name: "category",
-                message: `OASF Skills — choose a category to expand${summary}:`,
+                message: `${title}${summary} — choose a category (↑↓ navigate, Enter to open):`,
                 choices: categoryChoices,
-                pageSize: 14,
+                pageSize: 15,
             },
         ]);
 
         if (category === "__done__") break;
 
-        const cat = SKILL_CATEGORIES.find((c) => c.name === category)!;
+        const cat = categories.find((c) => c.name === category)!;
         const prevSelected = selectedByCategory.get(category) ?? [];
+        const displayName = cat.name
+            .replace("Arbitrum (arbitrum-dapp-skill)", "EVM L2 dApp Skills")
+            .replace("Ethereum Dev (ethskills.com)", "Ethereum Dev Skills");
 
         const { picked } = await inquirer.prompt<{ picked: string[] }>([
             {
                 type: "checkbox",
                 name: "picked",
-                message: `${cat.name}  ${chalk.gray("(space = toggle · Enter = save & back to categories)")}`,
+                message: `${displayName}  ${chalk.gray("(space = toggle · Enter = save & go back)")}`,
                 choices: [
                     ...cat.skills.map((s) => ({
                         name: s.name,
                         value: s.value,
                         checked: prevSelected.includes(s.value),
                     })),
-                    new inquirer.Separator("  ─────────────────────────────────────────"),
-                    new inquirer.Separator(chalk.gray("  ↩  Press Enter to save and go back")),
+                    new inquirer.Separator(
+                        "  ─────────────────────────────────────────────"
+                    ),
+                    new inquirer.Separator(
+                        chalk.gray("  ↩  Press Enter to save and go back to categories")
+                    ),
                 ],
-                pageSize: 14,
+                pageSize: 15,
             },
         ]);
 
@@ -94,6 +109,60 @@ async function promptOASFSkills(): Promise<string[]> {
     }
 
     return [...selectedByCategory.values()].flat();
+}
+
+// ── Official OASF skills — flat checkbox (only 10 skills, no need for nesting) ─
+
+async function promptOASFSkills(): Promise<string[]> {
+    console.log(chalk.bold("\n  📋 OASF Skills — Official Taxonomy (On-Chain Registration)"));
+    console.log(
+        chalk.gray(
+            "  ─────────────────────────────────────────────────────────────────────────────"
+        )
+    );
+    console.log(
+        chalk.gray(
+            "  OASF skills classify the AI capabilities your agent provides (language, vision,"
+        )
+    );
+    console.log(
+        chalk.gray(
+            "  audio, reasoning). They are registered on the ERC-8004 blockchain and make"
+        )
+    );
+    console.log(chalk.gray("  your agent discoverable in the on-chain registry."));
+    console.log();
+    console.log(
+        chalk.yellow(
+            "  ⚠️  These are NOT web3 knowledge skills — they classify your AI model's"
+        )
+    );
+    console.log(chalk.yellow("     capabilities (e.g. can it generate text? translate? reason?)."));
+    console.log(
+        chalk.yellow(
+            "  ⚠️  Inaccurate selections will damage your agent's on-chain reputation score."
+        )
+    );
+    console.log(
+        chalk.gray(
+            "  ─────────────────────────────────────────────────────────────────────────────\n"
+        )
+    );
+
+    const { skills } = await inquirer.prompt<{ skills: string[] }>([
+        {
+            type: "checkbox",
+            name: "skills",
+            message: "Select your agent's AI capabilities (space = toggle, Enter = confirm):",
+            choices: OASF_OFFICIAL_CATEGORIES.flatMap((cat) => [
+                new inquirer.Separator(`  ${cat.name}`),
+                ...cat.skills.map((s) => ({ name: s.name, value: s.value })),
+            ]),
+            pageSize: 20,
+        },
+    ]);
+
+    return skills ?? [];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -111,6 +180,7 @@ export interface WizardAnswers {
     agentWallet: string;
     generatedPrivateKey?: string;
     skills?: string[];
+    web3Skills?: string[];
     domains?: string[];
     llmProvider: "openai" | "claude";
     llmModel: string;
@@ -119,12 +189,15 @@ export interface WizardAnswers {
 export const hasFeature = (answers: WizardAnswers, feature: "a2a" | "mcp" | "x402") =>
     answers.features.includes(feature);
 
+// "skills" appears in the raw features checkbox but is stripped before WizardAnswers
+type RawFeature = "a2a" | "mcp" | "x402" | "skills";
+
 interface RawAnswers {
     projectDir: string;
     agentName: string;
     agentDescription: string;
     agentImage: string;
-    features: ("a2a" | "mcp" | "x402")[];
+    features: RawFeature[];
     a2aStreaming?: boolean;
     chain: ChainKey;
     trustModels: TrustModel[];
@@ -186,6 +259,7 @@ export async function runWizard(): Promise<WizardAnswers> {
                     })),
             ],
         },
+        // ── Features (A2A / MCP / x402 / Web3 Skills) ──
         {
             type: "checkbox",
             name: "features",
@@ -195,12 +269,12 @@ export async function runWizard(): Promise<WizardAnswers> {
                 const x402Supported = chainConfig?.x402Supported ?? false;
                 return [
                     {
-                        name: `A2A Server  ${chalk.gray("— Agent-to-Agent protocol: enables your agent to communicate and collaborate with other agents")}`,
+                        name: `A2A Server  ${chalk.gray("— Agent-to-Agent protocol: communicate and collaborate with other agents")}`,
                         value: "a2a",
                         checked: true,
                     },
                     {
-                        name: `MCP Server  ${chalk.gray("— Model Context Protocol: allows your agent to connect to external tools and data sources")}`,
+                        name: `MCP Server  ${chalk.gray("— Model Context Protocol: connect to external tools and data sources")}`,
                         value: "mcp",
                         checked: false,
                     },
@@ -211,6 +285,11 @@ export async function runWizard(): Promise<WizardAnswers> {
                               checked: false,
                           }
                         : { name: "x402 Payments", value: "x402", disabled: "Not available on this chain" },
+                    {
+                        name: `Web3 Skills  ${chalk.gray("— Load ethSkills and EVM dApp knowledge into your agent's context")}`,
+                        value: "skills",
+                        checked: false,
+                    },
                 ];
             },
         },
@@ -219,7 +298,7 @@ export async function runWizard(): Promise<WizardAnswers> {
             name: "a2aStreaming",
             message: `Enable A2A streaming responses?  ${chalk.gray("(real-time progressive responses instead of waiting for complete output)")}`,
             default: false,
-            when: (ans: Partial<RawAnswers>) => ans.features?.includes("a2a") ?? false,
+            when: (ans: Partial<RawAnswers>) => (ans.features as string[] | undefined)?.includes("a2a") ?? false,
         },
         {
             type: "checkbox",
@@ -291,27 +370,45 @@ export async function runWizard(): Promise<WizardAnswers> {
         },
     ]);
 
-    // ── OASF Skills — separate prompt with explanatory context ──
-    console.log(chalk.bold("\n  📋 OASF Skills (On-Chain Registration)"));
-    console.log(chalk.gray("  ─────────────────────────────────────────────────────────────────"));
-    console.log(chalk.gray("  OASF (Open Agent Specification Framework) skills are on-chain metadata"));
-    console.log(chalk.gray("  stored in the ERC-8004 registry that make your agent discoverable by"));
-    console.log(chalk.gray("  other agents and tools on the network."));
-    console.log();
-    console.log(chalk.yellow("  ⚠️  These are NOT Claude/AI model skills — they are blockchain identifiers."));
-    console.log(chalk.yellow("  ⚠️  Only select skills your agent genuinely supports. Publishing inaccurate"));
-    console.log(chalk.yellow("     skills can damage your agent's on-chain reputation score."));
-    console.log();
-    if (answers.llmProvider === "openai") {
-        console.log(chalk.gray("  → Selected skills will be injected as context into your agent's system prompt."));
+    // ── Web3 Skills (if "skills" was checked in features) ────────────────────
+    const wantsWeb3Skills = (answers.features as string[]).includes("skills");
+    let web3Skills: string[] = [];
+
+    if (wantsWeb3Skills) {
+        console.log(chalk.bold("\n  🔗 Web3 Skills"));
+        console.log(
+            chalk.gray(
+                "  ─────────────────────────────────────────────────────────────────────────────"
+            )
+        );
+        console.log(
+            chalk.gray(
+                "  Web3 skills load domain knowledge into your agent from community skill docs."
+            )
+        );
+        console.log(
+            chalk.gray(
+                "  These are NOT OASF taxonomy identifiers — they are practical knowledge bases"
+            )
+        );
+        console.log(
+            chalk.gray("  (ethSkills, EVM dApp skills) injected into your agent's context.")
+        );
+        console.log(
+            chalk.gray(
+                "  ─────────────────────────────────────────────────────────────────────────────\n"
+            )
+        );
+        web3Skills = await promptNestedSkills(WEB3_SKILL_CATEGORIES, "Web3 Skills");
     }
-    console.log(chalk.gray("  → All agents get a .claude/CLAUDE.md with web3 skills reference (Claude-native"));
-    console.log(chalk.gray("    auto-load, OpenAI agents can use it as context too)."));
-    console.log(chalk.gray("  → Browse taxonomy: https://schema.oasf.outshift.com/0.8.0"));
-    console.log(chalk.gray("  ─────────────────────────────────────────────────────────────────\n"));
 
-    const skills = await promptOASFSkills();
+    // ── OASF Official Skills (always shown at the end) ────────────────────────
+    const oasfSkills = await promptOASFSkills();
 
+    // Merge: web3 skills + OASF skills both go into skills[] for on-chain registration
+    const allSkills = [...web3Skills, ...oasfSkills];
+
+    // ── Directory resolution ──────────────────────────────────────────────────
     let projectDir = answers.projectDir.trim();
     const cwdBasename = path.basename(process.cwd());
     const alreadyInAgents = cwdBasename === "agents";
@@ -337,6 +434,11 @@ export async function runWizard(): Promise<WizardAnswers> {
     const agentWallet = account.address;
     console.log("\n🔑 Generated new wallet:", agentWallet);
 
+    // Strip "skills" from features — it was a trigger, not a protocol feature
+    const cleanFeatures = answers.features.filter(
+        (f): f is "a2a" | "mcp" | "x402" => f !== "skills"
+    );
+
     return {
         ...answers,
         archetype: "custom",
@@ -344,10 +446,11 @@ export async function runWizard(): Promise<WizardAnswers> {
         agentWallet,
         generatedPrivateKey: privateKey,
         a2aStreaming: answers.a2aStreaming ?? false,
-        features: answers.features,
+        features: cleanFeatures,
         llmProvider: answers.llmProvider,
         llmModel: answers.llmModel,
-        skills: skills ?? [],
+        skills: allSkills,
+        web3Skills,
         domains: [],
     };
 }

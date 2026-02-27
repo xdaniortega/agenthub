@@ -1,10 +1,19 @@
 /**
- * OASF Skills Catalog
+ * Skills Catalog
  *
- * A curated subset of the Open Agent Specification Framework (OASF) taxonomy
- * relevant to Web3, DeFi, and blockchain-focused AI agents.
+ * Two separate catalogs with distinct purposes:
  *
- * Full taxonomy: https://schema.oasf.outshift.com/0.8.0
+ * 1. OASF_OFFICIAL_CATEGORIES — Official OASF taxonomy skills for on-chain
+ *    ERC-8004 registration. Use these to declare your agent's AI capabilities
+ *    (language, vision, audio, reasoning). Selecting inaccurate skills affects
+ *    your on-chain reputation score.
+ *
+ * 2. WEB3_SKILL_CATEGORIES — Practical web3 knowledge base skills that give
+ *    your agent context about blockchain development, DeFi, smart contracts,
+ *    and EVM ecosystems. These are loaded into your agent as context, not
+ *    registered as OASF taxonomy identifiers.
+ *
+ * Full OASF taxonomy: https://schema.oasf.outshift.com/0.8.0
  *
  * The ETHSKILLS and ARBITRUM sections below are auto-generated.
  * Run `npm run sync:skills` to refresh them from their source repos.
@@ -20,7 +29,52 @@ export interface SkillCategory {
     skills: SkillOption[];
 }
 
-export const SKILL_CATEGORIES: SkillCategory[] = [
+// ── Official OASF AI Capability Taxonomy ────────────────────────────────────
+// These are the standardised AI capability identifiers from the OASF spec.
+// They classify WHAT kind of AI tasks your agent can perform.
+// Registered on-chain via ERC-8004 — choose accurately, they affect reputation.
+
+export const OASF_OFFICIAL_CATEGORIES: SkillCategory[] = [
+    {
+        name: "🗣️  Language",
+        skills: [
+            { value: "language/text-generation", name: "Text Generation" },
+            { value: "language/text-completion", name: "Text Completion" },
+            { value: "language/text-summarization", name: "Text Summarization" },
+            { value: "language/text-translation", name: "Text Translation" },
+        ],
+    },
+    {
+        name: "👁️  Vision",
+        skills: [
+            { value: "vision/image-generation", name: "Image Generation" },
+            { value: "vision/image-classification", name: "Image Classification" },
+            { value: "vision/object-detection", name: "Object Detection" },
+        ],
+    },
+    {
+        name: "🔊  Audio",
+        skills: [
+            { value: "audio/speech-to-text", name: "Speech to Text" },
+            { value: "audio/text-to-speech", name: "Text to Speech" },
+        ],
+    },
+    {
+        name: "🧠  Reasoning",
+        skills: [
+            { value: "reasoning/task-planning", name: "Task Planning" },
+        ],
+    },
+];
+
+// ── Web3 Knowledge Base Skills ───────────────────────────────────────────────
+// Practical web3 skills loaded as context into your agent.
+// Includes curated DeFi/smart-contract knowledge AND URL-based skill documents
+// from community repos (ethSkills, EVM L2 dApp skills).
+// These are separate from OASF AI taxonomy — they enrich the agent's domain
+// knowledge, not its registered capability classification.
+
+export const WEB3_SKILL_CATEGORIES: SkillCategory[] = [
     {
         name: "DeFi & Finance",
         skills: [
@@ -43,31 +97,12 @@ export const SKILL_CATEGORIES: SkillCategory[] = [
         ],
     },
     {
-        name: "Technical Writing",
-        skills: [
-            { value: "technical_writing/documentation", name: "Documentation" },
-            { value: "technical_writing/tutorial_creation", name: "Tutorial Creation" },
-            { value: "technical_writing/smart_contract_documentation", name: "Smart Contract Docs" },
-            { value: "technical_writing/api_documentation", name: "API Documentation" },
-            { value: "technical_writing/whitepaper_writing", name: "Whitepaper Writing" },
-        ],
-    },
-    {
         name: "Data & Analytics",
         skills: [
             { value: "data_analysis/on_chain_analytics", name: "On-chain Analytics" },
             { value: "data_analysis/market_data", name: "Market Data Analysis" },
             { value: "data_analysis/graph_protocol", name: "The Graph / Subgraph Queries" },
             { value: "data_analysis/reporting", name: "Reporting & Dashboards" },
-        ],
-    },
-    {
-        name: "NFT & Gaming",
-        skills: [
-            { value: "nft/valuation", name: "NFT Valuation" },
-            { value: "nft/metadata_generation", name: "NFT Metadata Generation" },
-            { value: "gaming/game_theory", name: "Game Theory & Tokenomics" },
-            { value: "gaming/asset_trading", name: "In-game Asset Trading" },
         ],
     },
     {
@@ -80,12 +115,12 @@ export const SKILL_CATEGORIES: SkillCategory[] = [
         ],
     },
     {
-        name: "Natural Language Processing",
+        name: "NFT & Gaming",
         skills: [
-            { value: "nlp/summarization", name: "Summarization" },
-            { value: "nlp/sentiment_analysis", name: "Sentiment Analysis" },
-            { value: "nlp/question_answering", name: "Question Answering" },
-            { value: "nlp/translation", name: "Translation" },
+            { value: "nft/valuation", name: "NFT Valuation" },
+            { value: "nft/metadata_generation", name: "NFT Metadata Generation" },
+            { value: "gaming/game_theory", name: "Game Theory & Tokenomics" },
+            { value: "gaming/asset_trading", name: "In-game Asset Trading" },
         ],
     },
     // BEGIN:ETHSKILLS
@@ -130,5 +165,8 @@ export const SKILL_CATEGORIES: SkillCategory[] = [
     // END:ARBITRUM
 ];
 
-/** Flat list of all skills — useful for validation or display */
-export const ALL_SKILLS: SkillOption[] = SKILL_CATEGORIES.flatMap((c) => c.skills);
+/** Backward-compat alias — prefer using WEB3_SKILL_CATEGORIES or OASF_OFFICIAL_CATEGORIES */
+export const SKILL_CATEGORIES = WEB3_SKILL_CATEGORIES;
+
+/** Flat list of all web3 skills — useful for validation or display */
+export const ALL_SKILLS: SkillOption[] = WEB3_SKILL_CATEGORIES.flatMap((c) => c.skills);
