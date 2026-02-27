@@ -5,6 +5,7 @@ import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { CHAINS, TRUST_MODELS, type ChainKey, type TrustModel } from "./config.js";
 import type { AgentType } from "./types.js";
 import { ARCHETYPES } from "./archetypes/index.js";
+import { SKILL_CATEGORIES } from "./skills-catalog.js";
 
 function getAvailableDir(baseDir: string): string {
     if (baseDir === ".") return baseDir;
@@ -61,6 +62,7 @@ interface RawAnswers {
     a2aStreaming?: boolean;
     chain: ChainKey;
     trustModels: TrustModel[];
+    skills?: string[];
     useMasterPinataJwt?: boolean;
     preFundFromMaster?: boolean;
     preFundAmount?: string;
@@ -200,6 +202,17 @@ export async function runWizard(): Promise<WizardAnswers> {
             message: "Supported trust models:",
             choices: TRUST_MODELS.map((model) => ({ name: model, value: model, checked: model === "reputation" })),
         },
+        // ── Skills (Custom archetype only) ──
+        {
+            type: "checkbox",
+            name: "skills",
+            message: "Select OASF skills for your agent (space to toggle, enter to confirm):",
+            when: (ans: Partial<RawAnswers>) => ans.archetype === "custom",
+            choices: SKILL_CATEGORIES.flatMap((cat) => [
+                new inquirer.Separator(`── ${cat.name} ──`),
+                ...cat.skills.map((s) => ({ name: s.name, value: s.value })),
+            ]),
+        },
         {
             type: "confirm",
             name: "useMasterPinataJwt",
@@ -267,7 +280,7 @@ export async function runWizard(): Promise<WizardAnswers> {
         preFundFromMaster: answers.preFundFromMaster ?? false,
         preFundAmount: answers.preFundAmount?.trim() || "0.002",
         features: answers.features,
-        skills: archetype?.skills ?? [],
+        skills: answers.archetype === "custom" ? (answers.skills ?? []) : (archetype?.skills ?? []),
         domains: [],
     };
 }
