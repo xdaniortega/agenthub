@@ -94,6 +94,8 @@ async function main() {
     const action = await runMainMenu();
 
     if (action === "init") {
+        const { validateEnv } = await import("./commands/validate-env.js");
+        if (!validateEnv()) process.exit(1);
         const { runInit } = await import("./commands/init.js");
         await runInit();
         return;
@@ -108,6 +110,10 @@ async function main() {
         await runImportAgent();
         return;
     }
+
+    // "create" flow
+    const { validateEnv } = await import("./commands/validate-env.js");
+    if (!validateEnv()) process.exit(1);
 
     try {
         const answers = await runWizard();
