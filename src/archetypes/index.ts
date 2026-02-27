@@ -10,6 +10,9 @@ export interface Archetype {
 
 import { defiStrategistArchetype } from "./defi-strategist.js";
 import { technicalWriterArchetype } from "./technical-writer.js";
+import { tradingAgentArchetype } from "./trading-agent.js";
+import { dataOracleArchetype } from "./data-oracle.js";
+import { taskAutomationArchetype } from "./task-automation.js";
 
 const customArchetype: Archetype = {
     id: "custom",
@@ -22,6 +25,16 @@ const customArchetype: Archetype = {
 };
 
 export const ARCHETYPES: Record<string, Archetype> = {
+    // ── Arbitrum-native agent types ──────────────────────────────────────────
+    // These are the primary archetypes for the Arbitrum Agent Kit.
+    // To add a new agent type:
+    //   1. Create src/archetypes/my-agent.ts implementing the Archetype interface
+    //   2. Add a template generator in src/templates/arbitrum/my-agent.ts
+    //   3. Register it below and in ARCHETYPE_EXTRAS in src/generator.ts
+    "trading-agent": tradingAgentArchetype,
+    "data-oracle": dataOracleArchetype,
+    "task-automation": taskAutomationArchetype,
+    // ── General-purpose archetypes ───────────────────────────────────────────
     "defi-strategist": defiStrategistArchetype,
     "technical-writer": technicalWriterArchetype,
     custom: customArchetype,

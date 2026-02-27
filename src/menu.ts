@@ -1,6 +1,6 @@
 import inquirer from "inquirer";
 
-export type MainAction = "create" | "communicate" | "import";
+export type MainAction = "init" | "create" | "communicate" | "import";
 
 export async function runMainMenu(): Promise<MainAction> {
     const { action } = await inquirer.prompt<{ action: MainAction }>([
@@ -9,9 +9,10 @@ export async function runMainMenu(): Promise<MainAction> {
             name: "action",
             message: "What do you want to do?",
             choices: [
-                { name: "🛠️  Create a new agent", value: "create" },
-                { name: "💬 Communicate with my agents", value: "communicate" },
-                { name: "📦 Import my agent", value: "import" },
+                { name: "⚡ Init        Quick Arbitrum agent setup (recommended)", value: "init" },
+                { name: "🛠️  Create     Full wizard with all options", value: "create" },
+                { name: "💬 Communicate Chat with a deployed agent via A2A", value: "communicate" },
+                { name: "📦 Import      Add ERC-8004 to an existing project", value: "import" },
             ],
         },
     ]);
