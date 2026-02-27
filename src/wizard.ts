@@ -22,6 +22,82 @@ function getAvailableDir(baseDir: string): string {
     return newDir;
 }
 
+// ── OASF Skills nested browser ────────────────────────────────────────────────
+// Shows categories first; selecting one opens a skill checkbox for that category.
+// Pressing Enter on the skill list saves choices and returns to categories.
+// "Done" at the bottom of the category list confirms the whole selection.
+
+async function promptOASFSkills(): Promise<string[]> {
+    // Track selections per category so choices persist when navigating back
+    const selectedByCategory = new Map<string, string[]>();
+
+    while (true) {
+        // Build category list with per-category selection count
+        const categoryChoices = [
+            ...SKILL_CATEGORIES.map((cat) => {
+                const count = selectedByCategory.get(cat.name)?.length ?? 0;
+                const badge =
+                    count > 0
+                        ? chalk.green(` [${count} selected]`)
+                        : chalk.gray(` — ${cat.skills.length} skills`);
+                return {
+                    name: `${cat.name}${badge}`,
+                    value: cat.name,
+                    short: cat.name,
+                };
+            }),
+            new inquirer.Separator("  ─────────────────────────────────────────"),
+            {
+                name: chalk.bold.cyan("✓  Done — confirm selection and continue"),
+                value: "__done__",
+                short: "Done",
+            },
+        ];
+
+        const totalSelected = [...selectedByCategory.values()].reduce((sum, v) => sum + v.length, 0);
+        const summary = totalSelected > 0 ? chalk.green(` (${totalSelected} selected so far)`) : "";
+
+        const { category } = await inquirer.prompt<{ category: string }>([
+            {
+                type: "list",
+                name: "category",
+                message: `OASF Skills — choose a category to expand${summary}:`,
+                choices: categoryChoices,
+                pageSize: 14,
+            },
+        ]);
+
+        if (category === "__done__") break;
+
+        const cat = SKILL_CATEGORIES.find((c) => c.name === category)!;
+        const prevSelected = selectedByCategory.get(category) ?? [];
+
+        const { picked } = await inquirer.prompt<{ picked: string[] }>([
+            {
+                type: "checkbox",
+                name: "picked",
+                message: `${cat.name}  ${chalk.gray("(space = toggle · Enter = save & back to categories)")}`,
+                choices: [
+                    ...cat.skills.map((s) => ({
+                        name: s.name,
+                        value: s.value,
+                        checked: prevSelected.includes(s.value),
+                    })),
+                    new inquirer.Separator("  ─────────────────────────────────────────"),
+                    new inquirer.Separator(chalk.gray("  ↩  Press Enter to save and go back")),
+                ],
+                pageSize: 14,
+            },
+        ]);
+
+        selectedByCategory.set(category, picked);
+    }
+
+    return [...selectedByCategory.values()].flat();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export interface WizardAnswers {
     archetype: string;
     projectDir: string;
@@ -234,17 +310,7 @@ export async function runWizard(): Promise<WizardAnswers> {
     console.log(chalk.gray("  → Browse taxonomy: https://schema.oasf.outshift.com/0.8.0"));
     console.log(chalk.gray("  ─────────────────────────────────────────────────────────────────\n"));
 
-    const { skills } = await inquirer.prompt<{ skills: string[] }>([
-        {
-            type: "checkbox",
-            name: "skills",
-            message: "Select OASF skills for your agent (space = toggle, enter = confirm):",
-            choices: SKILL_CATEGORIES.flatMap((cat) => [
-                new inquirer.Separator(`── ${cat.name} ──`),
-                ...cat.skills.map((s) => ({ name: s.name, value: s.value })),
-            ]),
-        },
-    ]);
+    const skills = await promptOASFSkills();
 
     let projectDir = answers.projectDir.trim();
     const cwdBasename = path.basename(process.cwd());
