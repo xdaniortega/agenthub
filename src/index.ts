@@ -93,6 +93,11 @@ async function main() {
 
     const action = await runMainMenu();
 
+    if (action === "init") {
+        const { runInit } = await import("./commands/init.js");
+        await runInit();
+        return;
+    }
     if (action === "communicate") {
         const { runCommunicate } = await import("./commands/communicate.js");
         await runCommunicate();

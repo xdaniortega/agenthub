@@ -19,8 +19,34 @@ import {
 } from "./templates/feedback-agent.js";
 import { generateA2AServer, generateAgentCard, generateA2AClient } from "./templates/protocols/a2a.js";
 import { generateMCPServer, generateMCPTools } from "./templates/protocols/mcp.js";
+import { generateTradingEngine } from "./templates/arbitrum/trading-engine.js";
+import { generateDataFeed, generateOracleTools } from "./templates/arbitrum/data-feed.js";
+import { generateTaskRunner } from "./templates/arbitrum/task-runner.js";
 import { upsertAgent } from "./registry.js";
 import { ARCHETYPES } from "./archetypes/index.js";
+
+/**
+ * Archetype-specific extra files written after the base scaffold.
+ * Maps archetype ID → { relativePath: content } pairs.
+ *
+ * How to extend:
+ *   1. Add a template generator in src/templates/arbitrum/
+ *   2. Register it here — the generator receives the full WizardAnswers
+ *   3. Entries here can also OVERRIDE base files (e.g. tools.ts for data-oracle)
+ */
+const ARCHETYPE_EXTRAS: Record<string, (answers: WizardAnswers) => Record<string, string>> = {
+    "trading-agent": () => ({
+        "src/trading-engine.ts": generateTradingEngine(),
+    }),
+    "data-oracle": () => ({
+        "src/data-feed.ts": generateDataFeed(),
+        // Override the generic tools.ts with oracle-specific MCP tools
+        "src/tools.ts": generateOracleTools(),
+    }),
+    "task-automation": () => ({
+        "src/task-runner.ts": generateTaskRunner(),
+    }),
+};
 
 export async function generateProject(answers: WizardAnswers): Promise<void> {
     const projectPath = path.resolve(process.cwd(), answers.projectDir);
@@ -76,6 +102,14 @@ export async function generateProject(answers: WizardAnswers): Promise<void> {
     if (hasFeature(answers, "mcp")) {
         await writeFile(projectPath, "src/mcp-server.ts", generateMCPServer(answers));
         await writeFile(projectPath, "src/tools.ts", generateMCPTools());
+    }
+
+    // Write archetype-specific extra files (may override base files like tools.ts)
+    const extrasFn = ARCHETYPE_EXTRAS[answers.archetype ?? "custom"];
+    if (extrasFn) {
+        for (const [filePath, content] of Object.entries(extrasFn(answers))) {
+            await writeFile(projectPath, filePath, content);
+        }
     }
 
     const repoRoot = process.cwd();
