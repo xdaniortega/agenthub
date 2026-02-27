@@ -30,3 +30,7 @@ AgentHub is a CLI toolkit for working with [ERC-8004](https://eips.ethereum.org/
 - [ERC-8004 Standard](https://eips.ethereum.org/EIPS/eip-8004)
 - [8004scan Explorer](https://www.8004scan.io/)
 - [Agent0 SDK](https://github.com/blockbyvlog/agent0-sdk)
+
+## Acknowledgements
+
+Inspired by [create-8004-agent](https://github.com/Eversmile12/create-8004-agent) — the original ERC-8004 scaffolding tool that laid the groundwork for this project.
