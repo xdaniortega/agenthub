@@ -21,7 +21,7 @@ import {
     getNextPort,
     cleanupTestOutput,
 } from './test-helpers.js';
-import type { ChainKey } from '../../dist/config.js';
+import type { ChainKey } from '../../src/config.js';
 
 export interface ChainTestConfig {
     chainKey: ChainKey;
