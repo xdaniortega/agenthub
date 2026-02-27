@@ -10,9 +10,9 @@ import fs from 'fs/promises';
 import path from 'path';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-import { generateProject } from '../../dist/generator.js';
-import type { WizardAnswers } from '../../dist/wizard.js';
-import type { ChainKey } from '../../dist/config.js';
+import { generateProject } from '../../src/generator.js';
+import type { WizardAnswers } from '../../src/wizard.js';
+import type { ChainKey } from '../../src/config.js';
 
 const execAsync = promisify(exec);
 
