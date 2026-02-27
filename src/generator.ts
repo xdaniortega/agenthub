@@ -35,14 +35,13 @@ export async function generateProject(answers: WizardAnswers): Promise<void> {
     const chain = CHAINS[answers.chain];
     const archetype = ARCHETYPES[answers.archetype ?? "custom"];
 
-    // Merge archetype OASF metadata into answers (used by register.ts template)
+    // Apply archetype skills to answers
     if (archetype && archetype.id !== "custom") {
         answers.skills = archetype.skills;
-        answers.domains = archetype.domains;
     }
 
-    // Build package.json (with archetype extra deps + orchestrator scripts)
-    let packageJson = generatePackageJson(answers, archetype);
+    // Build package.json
+    let packageJson = generatePackageJson(answers);
     if (isFeedbackAgent(answers)) {
         const pkg = JSON.parse(packageJson) as { scripts: Record<string, string> };
         Object.assign(pkg.scripts, getPackageJsonExtras().scripts);
@@ -76,17 +75,7 @@ export async function generateProject(answers: WizardAnswers): Promise<void> {
 
     if (hasFeature(answers, "mcp")) {
         await writeFile(projectPath, "src/mcp-server.ts", generateMCPServer(answers));
-        await writeFile(projectPath, "src/tools.ts", generateMCPTools(archetype?.mcpTools));
-    }
-
-    // Generate archetype extra files (e.g. registry-service.ts, orchestrator.ts)
-    if (archetype && archetype.id !== "custom") {
-        for (const extra of archetype.extraTemplates) {
-            // Ensure nested directories exist
-            const fullPath = path.join(projectPath, extra.path);
-            await fs.mkdir(path.dirname(fullPath), { recursive: true });
-            await fs.writeFile(fullPath, extra.generator(answers), "utf-8");
-        }
+        await writeFile(projectPath, "src/tools.ts", generateMCPTools());
     }
 
     const repoRoot = process.cwd();

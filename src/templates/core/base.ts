@@ -1,7 +1,6 @@
 import type { WizardAnswers } from "../../wizard.js";
 import { hasFeature } from "../../wizard.js";
 import { CHAINS } from "../../config.js";
-import type { AgentArchetype } from "../../archetypes/index.js";
 
 type ChainConfig = (typeof CHAINS)[keyof typeof CHAINS];
 
@@ -34,7 +33,7 @@ function getFundingInstructions(chain: ChainConfig): string {
     return "\nFund your wallet with native tokens for gas fees.\n";
 }
 
-export function generatePackageJson(answers: WizardAnswers, archetype?: AgentArchetype): string {
+export function generatePackageJson(answers: WizardAnswers): string {
     const scripts: Record<string, string> = {
         build: "tsc",
         register: "tsx src/register.ts",
@@ -74,18 +73,6 @@ export function generatePackageJson(answers: WizardAnswers, archetype?: AgentArc
         dependencies["@x402/express"] = "^2.0.0";
         dependencies["@x402/core"] = "^2.0.0";
         dependencies["@x402/evm"] = "^2.0.0";
-    }
-
-    // Orchestrator archetype extra scripts
-    if (answers.archetype === "orchestrator") {
-        scripts["start:orchestrator"] = "tsx src/orchestrator.ts";
-        scripts["discover"] = "tsx src/orchestrator.ts --discover";
-        scripts["feedback"] = "tsx src/orchestrator.ts --feedback";
-    }
-
-    // Merge archetype extra dependencies
-    if (archetype?.extraDependencies) {
-        Object.assign(dependencies, archetype.extraDependencies);
     }
 
     return JSON.stringify(
@@ -144,7 +131,7 @@ FUND_AGENT_ETH=${preFundAmount}
     }
 
     // Add registry addresses for archetypes that read on-chain data
-    if (answers.archetype === "orchestrator" || (answers.skills && answers.skills.length > 0)) {
+    if (answers.skills && answers.skills.length > 0) {
         const identityAddr = (chain as { identityRegistry?: string | null }).identityRegistry;
         const reputationAddr = (chain as { reputationRegistry?: string | null }).reputationRegistry;
         if (identityAddr || reputationAddr) {
