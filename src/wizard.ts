@@ -36,6 +36,8 @@ export interface WizardAnswers {
     generatedPrivateKey?: string;
     skills?: string[];
     domains?: string[];
+    llmProvider: "openai" | "claude";
+    llmModel: string;
 }
 
 export const hasFeature = (answers: WizardAnswers, feature: "a2a" | "mcp" | "x402") =>
@@ -50,7 +52,8 @@ interface RawAnswers {
     a2aStreaming?: boolean;
     chain: ChainKey;
     trustModels: TrustModel[];
-    skills?: string[];
+    llmProvider: "openai" | "claude";
+    llmModel: string;
 }
 
 export async function runWizard(): Promise<WizardAnswers> {
@@ -160,11 +163,75 @@ export async function runWizard(): Promise<WizardAnswers> {
                 },
             ],
         },
-        // ── Skills (always shown — all agents are custom-configured) ──
+        // ── LLM provider ──
+        {
+            type: "list",
+            name: "llmProvider",
+            message: `LLM provider:  ${chalk.gray("— the AI model that will power your agent's intelligence")}`,
+            choices: [
+                {
+                    name: `OpenAI  ${chalk.gray("— GPT-4o-mini, GPT-4o · use OPENAI_API_KEY in .env")}`,
+                    value: "openai",
+                },
+                {
+                    name: `Claude (Anthropic)  ${chalk.gray("— Sonnet, Haiku, Opus · use ANTHROPIC_API_KEY in .env")}`,
+                    value: "claude",
+                },
+            ],
+        },
+        // ── LLM model (dynamic based on provider) ──
+        {
+            type: "list",
+            name: "llmModel",
+            message: "LLM model:",
+            choices: (ans: Partial<RawAnswers>) => {
+                if (ans.llmProvider === "claude") {
+                    return [
+                        {
+                            name: `claude-sonnet-4-6  ${chalk.gray("— Best balance of intelligence and speed (Recommended)")}`,
+                            value: "claude-sonnet-4-6",
+                        },
+                        {
+                            name: `claude-haiku-4-5-20251001  ${chalk.gray("— Fastest and most cost-efficient")}`,
+                            value: "claude-haiku-4-5-20251001",
+                        },
+                        {
+                            name: `claude-opus-4-6  ${chalk.gray("— Most intelligent, best for complex reasoning")}`,
+                            value: "claude-opus-4-6",
+                        },
+                    ];
+                }
+                return [
+                    {
+                        name: `gpt-4o-mini  ${chalk.gray("— Fast and cost-efficient (Recommended)")}`,
+                        value: "gpt-4o-mini",
+                    },
+                    {
+                        name: `gpt-4o  ${chalk.gray("— Most capable OpenAI model")}`,
+                        value: "gpt-4o",
+                    },
+                ];
+            },
+        },
+    ]);
+
+    // ── OASF Skills — separate prompt with explanatory context ──
+    console.log(chalk.bold("\n  📋 OASF Skills"));
+    console.log(chalk.gray("  OASF (Open Agent Specification Framework) skills are on-chain metadata that make"));
+    console.log(chalk.gray("  your agent discoverable by other agents and tools via the ERC-8004 registry."));
+    console.log(chalk.gray("  They are taxonomy identifiers — NOT the same as Claude skills or LLM capabilities."));
+    if (answers.llmProvider === "openai") {
+        console.log(chalk.gray("  Selected skills will be injected as context into your agent's system prompt."));
+    } else {
+        console.log(chalk.gray("  Selected skills will also be written to .claude/CLAUDE.md in your project."));
+    }
+    console.log(chalk.gray("  Browse the full taxonomy: https://schema.oasf.outshift.com/0.8.0\n"));
+
+    const { skills } = await inquirer.prompt<{ skills: string[] }>([
         {
             type: "checkbox",
             name: "skills",
-            message: "Select OASF skills for your agent (space to toggle, enter to confirm):",
+            message: "Select OASF skills for your agent (space = toggle, enter = confirm):",
             choices: SKILL_CATEGORIES.flatMap((cat) => [
                 new inquirer.Separator(`── ${cat.name} ──`),
                 ...cat.skills.map((s) => ({ name: s.name, value: s.value })),
@@ -205,7 +272,9 @@ export async function runWizard(): Promise<WizardAnswers> {
         generatedPrivateKey: privateKey,
         a2aStreaming: answers.a2aStreaming ?? false,
         features: answers.features,
-        skills: answers.skills ?? [],
+        llmProvider: answers.llmProvider,
+        llmModel: answers.llmModel,
+        skills: skills ?? [],
         domains: [],
     };
 }

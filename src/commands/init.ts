@@ -65,7 +65,7 @@ function printSummaryBox(fields: Array<[string, string]>): void {
     console.log(chalk.bold("  └" + "─".repeat(50) + "┘\n"));
 }
 
-function printNextSteps(agentName: string, projectDir: string, features: string[]): void {
+function printNextSteps(agentName: string, projectDir: string, features: string[], llmProvider?: string): void {
     const hasA2A = features.includes("a2a");
     const hasMCP = features.includes("mcp");
 
@@ -88,10 +88,14 @@ function printNextSteps(agentName: string, projectDir: string, features: string[
 
     if (projectDir !== ".") step("Navigate to your project", [`cd ${projectDir}`]);
 
+    const llmKeyLine =
+        llmProvider === "claude"
+            ? "ANTHROPIC_API_KEY=sk-ant-...  ← get one at console.anthropic.com"
+            : "OPENAI_API_KEY=sk-...         ← get one at platform.openai.com";
     step("Add your API keys to .env", [
         "PRIVATE_KEY is already set (auto-generated) — back it up!",
-        "OPENAI_API_KEY=sk-...    ← get one at platform.openai.com",
-        "PINATA_JWT=...           ← get a free key at pinata.cloud",
+        llmKeyLine,
+        "PINATA_JWT=...                ← get a free key at pinata.cloud",
     ]);
 
     step("Get testnet ETH on Arbitrum Sepolia", [
@@ -169,17 +173,58 @@ export async function runInit(): Promise<void> {
         },
     ]);
 
+    // ── Step 3: LLM provider ──────────────────────────────────────────────────
+    const { llmProvider } = await inquirer.prompt<{ llmProvider: "openai" | "claude" }>([
+        {
+            type: "list",
+            name: "llmProvider",
+            message: `LLM provider:  ${chalk.gray("— the AI model that will power your agent")}`,
+            choices: [
+                {
+                    name: `OpenAI  ${chalk.gray("— GPT-4o-mini · fast and cost-efficient · needs OPENAI_API_KEY")}`,
+                    value: "openai",
+                },
+                {
+                    name: `Claude (Anthropic)  ${chalk.gray("— claude-sonnet-4-6 · powerful reasoning · needs ANTHROPIC_API_KEY")}`,
+                    value: "claude",
+                },
+            ],
+        },
+    ]);
+
+    const llmModelChoices =
+        llmProvider === "claude"
+            ? [
+                  { name: `claude-sonnet-4-6  ${chalk.gray("— Recommended")}`, value: "claude-sonnet-4-6" },
+                  { name: `claude-haiku-4-5-20251001  ${chalk.gray("— Fastest")}`, value: "claude-haiku-4-5-20251001" },
+                  { name: `claude-opus-4-6  ${chalk.gray("— Most intelligent")}`, value: "claude-opus-4-6" },
+              ]
+            : [
+                  { name: `gpt-4o-mini  ${chalk.gray("— Recommended")}`, value: "gpt-4o-mini" },
+                  { name: `gpt-4o  ${chalk.gray("— Most capable")}`, value: "gpt-4o" },
+              ];
+
+    const { llmModel } = await inquirer.prompt<{ llmModel: string }>([
+        {
+            type: "list",
+            name: "llmModel",
+            message: "LLM model:",
+            choices: llmModelChoices,
+        },
+    ]);
+
     // ── Auto-generate wallet ──────────────────────────────────────────────────
     const privateKey = generatePrivateKey();
     const account = privateKeyToAccount(privateKey);
 
-    // ── Step 3: Confirm ───────────────────────────────────────────────────────
+    // ── Step 4: Confirm ───────────────────────────────────────────────────────
     printSummaryBox([
         ["Type", `${agentType.emoji}  ${agentType.label}`],
         ["Name", agentName.trim()],
         ["Directory", projectDir.trim()],
         ["Chain", "Arbitrum Sepolia  (testnet — change in .env for mainnet)"],
         ["Wallet", `${account.address}  (auto-generated)`],
+        ["LLM", `${llmProvider === "claude" ? "Claude (Anthropic)" : "OpenAI"}  —  ${llmModel}`],
         ["Features", agentType.features.join(" + ")],
     ]);
 
@@ -210,6 +255,8 @@ export async function runInit(): Promise<void> {
         trustModels: ["reputation"],
         agentWallet: account.address,
         generatedPrivateKey: privateKey,
+        llmProvider,
+        llmModel,
         skills: [],
         domains: [],
     };
@@ -234,5 +281,5 @@ export async function runInit(): Promise<void> {
         installSpinner.warn(chalk.yellow("Dependency install failed — run 'npm install' manually."));
     }
 
-    printNextSteps(agentName.trim(), projectDir.trim(), agentType.features);
+    printNextSteps(agentName.trim(), projectDir.trim(), agentType.features, llmProvider);
 }

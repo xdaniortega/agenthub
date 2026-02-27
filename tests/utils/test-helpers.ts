@@ -64,6 +64,8 @@ export interface TestAgentOptions {
     projectName?: string;
     archetype?: string;
     skills?: string[];
+    llmProvider?: 'openai' | 'claude';
+    llmModel?: string;
 }
 
 /**
@@ -92,6 +94,8 @@ export async function generateTestAgent(options: TestAgentOptions): Promise<stri
         agentWallet: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0',
         skills: options.skills ?? [],
         domains: [],
+        llmProvider: options.llmProvider ?? 'openai',
+        llmModel: options.llmModel ?? 'gpt-4o-mini',
     };
     
     await generateProject(answers);

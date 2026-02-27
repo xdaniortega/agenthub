@@ -243,6 +243,8 @@ export async function runImportAgent(): Promise<void> {
         generatedPrivateKey: answers.generatedPrivateKey,
         skills: [],
         domains: [],
+        llmProvider: "openai",
+        llmModel: "gpt-4o-mini",
     };
 
     console.log(chalk.bold("\n🔧 Scaffolding ERC-8004 files...\n"));
