@@ -2,7 +2,7 @@ import fs from "fs/promises";
 import path from "path";
 import { CHAINS } from "./config.js";
 import type { WizardAnswers } from "./wizard.js";
-import { hasFeature, isFeedbackAgent } from "./wizard.js";
+import { hasFeature } from "./wizard.js";
 import {
     generatePackageJson,
     generateEnvExample,
@@ -66,17 +66,15 @@ export async function generateProject(answers: WizardAnswers): Promise<void> {
         answers.skills = archetype.skills;
     }
 
-    // Build package.json
+    // Build package.json — all agents get feedback scripts
     let packageJson = generatePackageJson(answers);
-    if (isFeedbackAgent(answers)) {
-        const pkg = JSON.parse(packageJson) as { scripts: Record<string, string> };
-        Object.assign(pkg.scripts, getPackageJsonExtras().scripts);
-        packageJson = JSON.stringify(pkg, null, 2);
-    }
+    const pkg = JSON.parse(packageJson) as { scripts: Record<string, string> };
+    Object.assign(pkg.scripts, getPackageJsonExtras().scripts);
+    packageJson = JSON.stringify(pkg, null, 2);
     await writeFile(projectPath, "package.json", packageJson);
 
     let env = generateEnvExample(answers, chain);
-    if (isFeedbackAgent(answers)) env += getEnvBlock();
+    env += getEnvBlock();
     await writeFile(projectPath, ".env", env);
 
     await writeFile(projectPath, "src/register.ts", generateRegisterScript(answers, chain));
@@ -84,14 +82,15 @@ export async function generateProject(answers: WizardAnswers): Promise<void> {
     await writeFile(projectPath, "tsconfig.json", generateTsConfig());
     await writeFile(projectPath, ".gitignore", generateGitignore());
 
-    const readmeOpts = isFeedbackAgent(answers)
-        ? { extraStructureLines: [getReadmeStructureLine()], extraSections: [getReadmeSection()] }
-        : undefined;
+    // All agents include feedback README section
+    const readmeOpts = {
+        extraStructureLines: [getReadmeStructureLine()],
+        extraSections: [getReadmeSection()],
+    };
     await writeFile(projectPath, "README.md", generateReadme(answers, chain, readmeOpts));
 
-    if (isFeedbackAgent(answers)) {
-        await writeFile(projectPath, "src/give-feedback.ts", generateGiveFeedbackScript());
-    }
+    // All agents include give-feedback script
+    await writeFile(projectPath, "src/give-feedback.ts", generateGiveFeedbackScript());
 
     if (hasFeature(answers, "a2a")) {
         await writeFile(projectPath, "src/a2a-server.ts", generateA2AServer(answers));
@@ -116,12 +115,12 @@ export async function generateProject(answers: WizardAnswers): Promise<void> {
     await writeFile(
         projectPath,
         ".8004.json",
-        JSON.stringify({ projectDir: answers.projectDir, agentType: answers.agentType }, null, 0)
+        JSON.stringify({ projectDir: answers.projectDir, agentType: "generic" }, null, 0)
     );
     await upsertAgent(repoRoot, {
         projectDir: answers.projectDir,
         name: answers.agentName,
-        agentType: answers.agentType,
+        agentType: "generic",
     });
 }
 

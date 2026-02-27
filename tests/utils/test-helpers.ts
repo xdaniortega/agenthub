@@ -81,7 +81,6 @@ export async function generateTestAgent(options: TestAgentOptions): Promise<stri
     
     const answers: WizardAnswers = {
         archetype: options.archetype ?? 'custom',
-        agentType: 'generic',
         projectDir: projectDir,
         agentName: `Test Agent ${options.chain}`,
         agentDescription: `Comprehensive test agent for ${options.chain}`,

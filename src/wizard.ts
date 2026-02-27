@@ -1,9 +1,9 @@
 import inquirer from "inquirer";
+import chalk from "chalk";
 import fs from "fs";
 import path from "path";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
-import { CHAINS, TRUST_MODELS, type ChainKey, type TrustModel } from "./config.js";
-import type { AgentType } from "./types.js";
+import { CHAINS, type ChainKey, type TrustModel } from "./config.js";
 import { ARCHETYPES } from "./archetypes/index.js";
 import { SKILL_CATEGORIES } from "./skills-catalog.js";
 
@@ -22,11 +22,8 @@ function getAvailableDir(baseDir: string): string {
     return newDir;
 }
 
-export type { AgentType } from "./types.js";
-
 export interface WizardAnswers {
     archetype: string;
-    agentType: AgentType;
     projectDir: string;
     agentName: string;
     agentDescription: string;
@@ -37,9 +34,6 @@ export interface WizardAnswers {
     trustModels: TrustModel[];
     agentWallet: string;
     generatedPrivateKey?: string;
-    useMasterPinataJwt?: boolean;
-    preFundFromMaster?: boolean;
-    preFundAmount?: string;
     skills?: string[];
     domains?: string[];
 }
@@ -47,58 +41,22 @@ export interface WizardAnswers {
 export const hasFeature = (answers: WizardAnswers, feature: "a2a" | "mcp" | "x402") =>
     answers.features.includes(feature);
 
-export const isFeedbackAgent = (answers: WizardAnswers): boolean =>
-    answers.agentType === "feedback-agent";
-
 interface RawAnswers {
-    archetype: string;
-    agentType: AgentType;
     projectDir: string;
     agentName: string;
     agentDescription: string;
     agentImage: string;
-    agentWallet: string;
     features: ("a2a" | "mcp" | "x402")[];
     a2aStreaming?: boolean;
     chain: ChainKey;
     trustModels: TrustModel[];
     skills?: string[];
-    useMasterPinataJwt?: boolean;
-    preFundFromMaster?: boolean;
-    preFundAmount?: string;
 }
 
 export async function runWizard(): Promise<WizardAnswers> {
     console.log("\n");
 
     const answers = await inquirer.prompt<RawAnswers>([
-        // ── Archetype (NEW — before everything else) ──
-        {
-            type: "list",
-            name: "archetype",
-            message: "Choose an agent archetype:",
-            choices: [
-                ...Object.values(ARCHETYPES)
-                    .filter((a) => a.id !== "custom")
-                    .map((a) => ({
-                        name: `${a.emoji} ${a.name} — ${a.description}`,
-                        value: a.id,
-                    })),
-                {
-                    name: "⚙️  Custom — Build from scratch with custom skills",
-                    value: "custom",
-                },
-            ],
-        },
-        {
-            type: "list",
-            name: "agentType",
-            message: "Agent type:",
-            choices: [
-                { name: "Generic", value: "generic" as const },
-                { name: "Feedback Agent (can call giveFeedback to rate other agents)", value: "feedback-agent" as const },
-            ],
-        },
         {
             type: "input",
             name: "projectDir",
@@ -115,8 +73,7 @@ export async function runWizard(): Promise<WizardAnswers> {
             type: "input",
             name: "agentDescription",
             message: "Agent description:",
-            default: (ans: Partial<RawAnswers>) =>
-                ARCHETYPES[ans.archetype ?? "custom"]?.description ?? "test agent created with agenthub",
+            default: "test agent created with agenthub",
         },
         {
             type: "input",
@@ -124,7 +81,7 @@ export async function runWizard(): Promise<WizardAnswers> {
             message: "Agent image URL:",
             default: "https://example.com/agent.png",
         },
-        // ── Chain selector (after archetype + basic info) ──
+        // ── Chain selector ──
         {
             type: "list",
             name: "chain",
@@ -151,39 +108,28 @@ export async function runWizard(): Promise<WizardAnswers> {
             ],
         },
         {
-            type: "input",
-            name: "agentWallet",
-            message: "Agent wallet address (leave empty to generate new):",
-            validate: (input: string) =>
-                input === ""
-                    ? true
-                    : /^0x[a-fA-F0-9]{40}$/.test(input) || "Enter a valid Ethereum address or leave empty",
-        },
-        {
             type: "checkbox",
             name: "features",
             message: "Select features to include:",
             choices: (ans: Partial<RawAnswers>) => {
                 const chainConfig = ans.chain ? CHAINS[ans.chain] : null;
                 const x402Supported = chainConfig?.x402Supported ?? false;
-                const archetype = ARCHETYPES[ans.archetype ?? "custom"];
-                const defaults = archetype?.defaultFeatures ?? ["a2a"];
                 return [
                     {
-                        name: "A2A Server (agent-to-agent communication)",
+                        name: `A2A Server  ${chalk.gray("— Agent-to-Agent protocol: enables your agent to communicate and collaborate with other agents")}`,
                         value: "a2a",
-                        checked: defaults.includes("a2a"),
+                        checked: true,
                     },
                     {
-                        name: "MCP Server (Model Context Protocol tools)",
+                        name: `MCP Server  ${chalk.gray("— Model Context Protocol: allows your agent to connect to external tools and data sources")}`,
                         value: "mcp",
-                        checked: defaults.includes("mcp"),
+                        checked: false,
                     },
                     x402Supported
                         ? {
-                              name: "x402 Payments (USDC micropayments)",
+                              name: `x402 Payments  ${chalk.gray("— USDC micropayments for agent services")}`,
                               value: "x402",
-                              checked: defaults.includes("x402"),
+                              checked: false,
                           }
                         : { name: "x402 Payments", value: "x402", disabled: "Not available on this chain" },
                 ];
@@ -192,7 +138,7 @@ export async function runWizard(): Promise<WizardAnswers> {
         {
             type: "confirm",
             name: "a2aStreaming",
-            message: "Enable A2A streaming responses? (SSE):",
+            message: `Enable A2A streaming responses?  ${chalk.gray("(real-time progressive responses instead of waiting for complete output)")}`,
             default: false,
             when: (ans: Partial<RawAnswers>) => ans.features?.includes("a2a") ?? false,
         },
@@ -200,39 +146,29 @@ export async function runWizard(): Promise<WizardAnswers> {
             type: "checkbox",
             name: "trustModels",
             message: "Supported trust models:",
-            choices: TRUST_MODELS.map((model) => ({ name: model, value: model, checked: model === "reputation" })),
+            choices: [
+                { name: "reputation", value: "reputation", checked: true },
+                {
+                    name: `crypto-economic  ${chalk.gray("(Coming soon)")}`,
+                    value: "crypto-economic",
+                    disabled: "coming soon",
+                },
+                {
+                    name: `tee-attestation  ${chalk.gray("(Coming soon)")}`,
+                    value: "tee-attestation",
+                    disabled: "coming soon",
+                },
+            ],
         },
-        // ── Skills (Custom archetype only) ──
+        // ── Skills (always shown — all agents are custom-configured) ──
         {
             type: "checkbox",
             name: "skills",
             message: "Select OASF skills for your agent (space to toggle, enter to confirm):",
-            when: (ans: Partial<RawAnswers>) => ans.archetype === "custom",
             choices: SKILL_CATEGORIES.flatMap((cat) => [
                 new inquirer.Separator(`── ${cat.name} ──`),
                 ...cat.skills.map((s) => ({ name: s.name, value: s.value })),
             ]),
-        },
-        {
-            type: "confirm",
-            name: "useMasterPinataJwt",
-            message: "Use the same Pinata JWT from your master .env for this agent?",
-            default: true,
-            when: (ans: Partial<RawAnswers>) => ans.chain != null,
-        },
-        {
-            type: "confirm",
-            name: "preFundFromMaster",
-            message: "Pre-fund the agent wallet from your master account after registration?",
-            default: true,
-            when: (ans: Partial<RawAnswers>) => ans.chain != null,
-        },
-        {
-            type: "input",
-            name: "preFundAmount",
-            message: "Amount (ETH) to transfer from master to agent wallet:",
-            default: "0.002",
-            when: (ans: Partial<RawAnswers>) => ans.preFundFromMaster === true,
         },
     ]);
 
@@ -255,32 +191,21 @@ export async function runWizard(): Promise<WizardAnswers> {
         projectDir = availableDir;
     }
 
-    let agentWallet = answers.agentWallet;
-    let generatedPrivateKey: string | undefined;
-
-    if (!agentWallet) {
-        const privateKey = generatePrivateKey();
-        generatedPrivateKey = privateKey;
-        const account = privateKeyToAccount(privateKey);
-        agentWallet = account.address;
-        console.log("\n🔑 Generated new wallet:", agentWallet);
-    }
-
-    const archetype = ARCHETYPES[answers.archetype ?? "custom"];
+    // Always auto-generate a new wallet
+    const privateKey = generatePrivateKey();
+    const account = privateKeyToAccount(privateKey);
+    const agentWallet = account.address;
+    console.log("\n🔑 Generated new wallet:", agentWallet);
 
     return {
         ...answers,
-        archetype: answers.archetype ?? "custom",
-        agentType: answers.agentType,
+        archetype: "custom",
         projectDir,
         agentWallet,
-        generatedPrivateKey,
+        generatedPrivateKey: privateKey,
         a2aStreaming: answers.a2aStreaming ?? false,
-        useMasterPinataJwt: answers.useMasterPinataJwt ?? false,
-        preFundFromMaster: answers.preFundFromMaster ?? false,
-        preFundAmount: answers.preFundAmount?.trim() || "0.002",
         features: answers.features,
-        skills: answers.archetype === "custom" ? (answers.skills ?? []) : (archetype?.skills ?? []),
+        skills: answers.skills ?? [],
         domains: [],
     };
 }
