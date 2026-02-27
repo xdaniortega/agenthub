@@ -1,21 +1,18 @@
 /**
- * Init command — quick, opinionated agent setup for Arbitrum.
+ * Init command — quick, opinionated agent scaffold (Agent Examples).
  *
- * Contrast with the full "create" wizard (which has ~12 prompts, multiple
- * chains, advanced trust models, etc.). This command gets developers from
- * zero to a running agent in under 60 seconds:
+ * Gets developers from zero to a running agent in under 60 seconds:
  *
- *   1. Pick an Arbitrum agent type
- *   2. Name your agent
- *   3. Choose a project directory
- *   4. Confirm
+ *   1. Name your agent
+ *   2. Choose a project directory
+ *   3. Confirm
  *   → Files generated, deps installed, next steps shown.
  *
  * Opinionated defaults (all can be changed in .env or package.json later):
  *   - Chain: Arbitrum Sepolia (testnet) — swap to arbitrum-mainnet for production
  *   - Wallet: auto-generated — back up the private key in .env!
  *   - Trust model: reputation
- *   - Features: archetype defaults (trading=a2a, oracle=a2a+mcp, automation=a2a)
+ *   - Features: a2a
  */
 
 import chalk from "chalk";
@@ -26,9 +23,8 @@ import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { generateProject } from "../generator.js";
 import type { WizardAnswers } from "../wizard.js";
 
-// ─── Arbitrum agent type registry ────────────────────────────────────────────
-// Add new agent types here — they appear automatically in the init prompt.
-// Each entry maps to an archetype ID in src/archetypes/index.ts.
+// ─── Agent type registry ──────────────────────────────────────────────────────
+// Only one type is active. Add new types here to extend the init menu.
 
 interface AgentType {
     id: string;
@@ -36,33 +32,17 @@ interface AgentType {
     label: string;
     tagline: string;
     features: ("a2a" | "mcp" | "x402")[];
-    dirSuffix: string;        // used to build the default project directory
+    dirSuffix: string;
 }
 
 const AGENT_TYPES: AgentType[] = [
     {
-        id: "trading-agent",
-        emoji: "📈",
-        label: "Trading Agent",
-        tagline: "Arbitrum DEX trading, price monitoring, portfolio management",
-        features: ["a2a"],
-        dirSuffix: "trading-agent",
-    },
-    {
-        id: "data-oracle",
-        emoji: "🔮",
-        label: "Data Oracle",
-        tagline: "On-chain data feeds, price oracles, analytics APIs",
-        features: ["a2a", "mcp"],
-        dirSuffix: "data-oracle",
-    },
-    {
-        id: "task-automation",
+        id: "custom",
         emoji: "⚡",
-        label: "Task Automation",
-        tagline: "Event-driven automation, on-chain monitoring, scheduled execution",
+        label: "Arbitrum dApp Developer",
+        tagline: "Build and deploy AI agents on Arbitrum",
         features: ["a2a"],
-        dirSuffix: "task-automation",
+        dirSuffix: "arbitrum-agent",
     },
 ];
 
@@ -147,25 +127,12 @@ function printNextSteps(agentName: string, projectDir: string, features: string[
 // ─── main ─────────────────────────────────────────────────────────────────────
 
 export async function runInit(): Promise<void> {
-    console.log(chalk.bold.cyan("\n  ⚡ AgentHub Init — Quick Arbitrum Agent Setup\n"));
+    console.log(chalk.bold.cyan("\n  ⚡ AgentHub — Agent Examples\n"));
 
-    // ── Step 1: Agent type ────────────────────────────────────────────────────
-    const { typeId } = await inquirer.prompt<{ typeId: string }>([
-        {
-            type: "list",
-            name: "typeId",
-            message: "What kind of agent do you want to build?",
-            choices: AGENT_TYPES.map((t) => ({
-                name: `${t.emoji}  ${t.label.padEnd(18)}  ${chalk.gray(t.tagline)}`,
-                value: t.id,
-                short: `${t.emoji} ${t.label}`,
-            })),
-        },
-    ]);
+    // Auto-select the only available agent type (no prompt needed)
+    const agentType = AGENT_TYPES[0];
 
-    const agentType = AGENT_TYPES.find((t) => t.id === typeId)!;
-
-    // ── Step 2: Agent name ────────────────────────────────────────────────────
+    // ── Step 1: Agent name ────────────────────────────────────────────────────
     const { agentName } = await inquirer.prompt<{ agentName: string }>([
         {
             type: "input",
@@ -179,7 +146,7 @@ export async function runInit(): Promise<void> {
     const slug = slugify(agentName.trim());
     const defaultDir = `agents/${slug}`;
 
-    // ── Step 3: Project directory ─────────────────────────────────────────────
+    // ── Step 2: Project directory ─────────────────────────────────────────────
     const { projectDir } = await inquirer.prompt<{ projectDir: string }>([
         {
             type: "input",
@@ -193,7 +160,7 @@ export async function runInit(): Promise<void> {
     const privateKey = generatePrivateKey();
     const account = privateKeyToAccount(privateKey);
 
-    // ── Step 4: Confirm ───────────────────────────────────────────────────────
+    // ── Step 3: Confirm ───────────────────────────────────────────────────────
     printSummaryBox([
         ["Type", `${agentType.emoji}  ${agentType.label}`],
         ["Name", agentName.trim()],
@@ -220,7 +187,6 @@ export async function runInit(): Promise<void> {
     // ── Generate ──────────────────────────────────────────────────────────────
     const answers: WizardAnswers = {
         archetype: agentType.id,
-        agentType: "generic",
         projectDir: projectDir.trim(),
         agentName: agentName.trim(),
         agentDescription: agentType.tagline,
@@ -231,10 +197,7 @@ export async function runInit(): Promise<void> {
         trustModels: ["reputation"],
         agentWallet: account.address,
         generatedPrivateKey: privateKey,
-        useMasterPinataJwt: true,
-        preFundFromMaster: false,
-        preFundAmount: "0.002",
-        skills: [],   // populated by generator from archetype definition
+        skills: [],
         domains: [],
     };
 

@@ -6,14 +6,11 @@
 
 import fs from "fs/promises";
 import path from "path";
-import type { AgentType } from "./types.js";
-
-export type { AgentType } from "./types.js";
 
 export interface RegistryAgent {
     projectDir: string;
     name: string;
-    agentType: AgentType;
+    agentType: string;
     agentId: string | null;
     chainId: number | null;
 }

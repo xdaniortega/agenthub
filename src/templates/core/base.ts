@@ -91,14 +91,7 @@ export function generatePackageJson(answers: WizardAnswers): string {
 }
 
 export function generateEnvExample(answers: WizardAnswers, chain: ChainConfig): string {
-    const useMasterJwt = answers.useMasterPinataJwt === true;
-    const preFund = answers.preFundFromMaster === true;
-    const preFundAmount = answers.preFundAmount?.trim() || "0.002";
-    // When using master: PRIVATE_KEY comes from root .env at register time; we still need AGENT_PRIVATE_KEY for setWallet (agent wallet signs EIP-712)
     const privateKeyValue = answers.generatedPrivateKey ?? "your_private_key_here";
-    const pinataLine = useMasterJwt
-        ? "# PINATA_JWT loaded from ../../.env (master) when you run register"
-        : "PINATA_JWT=your_pinata_jwt_here";
 
     let env = `# Registration: use ../../.env (master) for PRIVATE_KEY and PINATA_JWT, or set them here
 PRIVATE_KEY=${privateKeyValue}
@@ -109,8 +102,8 @@ AGENT_PRIVATE_KEY=${answers.generatedPrivateKey ?? "same_as_PRIVATE_KEY_or_your_
 # RPC URL for ${chain.name}
 RPC_URL=${chain.rpcUrl}
 
-# Pinata for IPFS
-${pinataLine}
+# Pinata for IPFS (loaded from ../../.env master when you run register)
+# PINATA_JWT loaded from ../../.env (master) when you run register
 
 # OpenAI API key for LLM agent
 OPENAI_API_KEY=your_openai_api_key_here
@@ -121,12 +114,6 @@ OPENAI_API_KEY=your_openai_api_key_here
 # x402 Payment Configuration (optional overrides)
 X402_PAYEE_ADDRESS=${answers.agentWallet}
 X402_PRICE=$0.001
-`;
-    }
-    if (preFund) {
-        env += `
-# Pre-fund: transfer this much ETH from master to agent wallet when you run register
-FUND_AGENT_ETH=${preFundAmount}
 `;
     }
 

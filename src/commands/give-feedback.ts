@@ -34,10 +34,10 @@ export async function runGiveFeedback(): Promise<void> {
         );
     }
 
-    console.log(chalk.gray("Choose which agent to use to give feedback. Only Feedback Agent type can submit feedback.\n"));
+    console.log(chalk.gray("Choose which agent to use to give feedback.\n"));
 
     const choices = deployed.map((a) => ({
-        name: `${a.name} (${a.projectDir})${a.agentType === "generic" ? " " + chalk.dim("[generic – cannot give feedback]") : ""}`,
+        name: `${a.name} (${a.projectDir})`,
         value: a,
     }));
 
@@ -49,12 +49,6 @@ export async function runGiveFeedback(): Promise<void> {
             choices,
         },
     ]);
-
-    if (selected.agentType === "generic") {
-        console.error(chalk.red("\nThis agent type cannot give feedback."));
-        console.error(chalk.yellow("Only a Feedback Agent project can submit feedback. Create a Feedback Agent and use that one, or select a Feedback Agent from the list."));
-        process.exit(1);
-    }
 
     const agentPath = path.join(registryRoot, selected.projectDir);
     console.log(chalk.cyan(`\nRunning feedback flow for "${selected.name}"...\n`));

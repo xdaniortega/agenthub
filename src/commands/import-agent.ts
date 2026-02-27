@@ -17,7 +17,7 @@ import inquirer from "inquirer";
 import fs from "fs/promises";
 import path from "path";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
-import { CHAINS, TRUST_MODELS, type ChainKey, type TrustModel } from "../config.js";
+import { CHAINS, type ChainKey, type TrustModel } from "../config.js";
 import {
     generateEnvExample,
     generateRegisterScript,
@@ -107,16 +107,12 @@ interface ImportAnswers {
     agentDescription: string;
     agentImage: string;
     chain: ChainKey;
-    agentWallet: string;
     features: ("a2a" | "mcp")[];
     a2aStreaming: boolean;
     trustModels: TrustModel[];
-    useMasterPinataJwt: boolean;
-    preFundFromMaster: boolean;
-    preFundAmount: string;
 }
 
-async function promptImport(): Promise<ImportAnswers & { generatedPrivateKey?: string }> {
+async function promptImport(): Promise<ImportAnswers & { agentWallet: string; generatedPrivateKey: string }> {
     console.log(chalk.bold("\n📦 Import Agent — Add ERC-8004 to an existing project\n"));
 
     const answers = await inquirer.prompt<ImportAnswers>([
@@ -166,25 +162,26 @@ async function promptImport(): Promise<ImportAnswers & { generatedPrivateKey?: s
             ],
         },
         {
-            type: "input",
-            name: "agentWallet",
-            message: "Agent wallet address (leave empty to generate new):",
-            validate: (input: string) =>
-                input === "" ? true : /^0x[a-fA-F0-9]{40}$/.test(input) || "Enter a valid Ethereum address or leave empty",
-        },
-        {
             type: "checkbox",
             name: "features",
             message: "ERC-8004 features to add:",
             choices: [
-                { name: "A2A Server (agent-to-agent communication)", value: "a2a", checked: true },
-                { name: "MCP Server (Model Context Protocol tools)", value: "mcp", checked: false },
+                {
+                    name: `A2A Server  ${chalk.gray("— Agent-to-Agent protocol: enables your agent to communicate and collaborate with other agents")}`,
+                    value: "a2a",
+                    checked: true,
+                },
+                {
+                    name: `MCP Server  ${chalk.gray("— Model Context Protocol: allows your agent to connect to external tools and data sources")}`,
+                    value: "mcp",
+                    checked: false,
+                },
             ],
         },
         {
             type: "confirm",
             name: "a2aStreaming",
-            message: "Enable A2A streaming responses? (SSE):",
+            message: `Enable A2A streaming responses?  ${chalk.gray("(real-time progressive responses instead of waiting for complete output)")}`,
             default: false,
             when: (ans: Partial<ImportAnswers>) => ans.features?.includes("a2a") ?? false,
         },
@@ -192,46 +189,32 @@ async function promptImport(): Promise<ImportAnswers & { generatedPrivateKey?: s
             type: "checkbox",
             name: "trustModels",
             message: "Supported trust models:",
-            choices: TRUST_MODELS.map((m) => ({ name: m, value: m, checked: m === "reputation" })),
-        },
-        {
-            type: "confirm",
-            name: "useMasterPinataJwt",
-            message: "Use the same Pinata JWT from your master .env for this agent?",
-            default: true,
-        },
-        {
-            type: "confirm",
-            name: "preFundFromMaster",
-            message: "Pre-fund the agent wallet from your master account after registration?",
-            default: true,
-        },
-        {
-            type: "input",
-            name: "preFundAmount",
-            message: "Amount (ETH) to transfer:",
-            default: "0.002",
-            when: (ans: Partial<ImportAnswers>) => ans.preFundFromMaster === true,
+            choices: [
+                { name: "reputation", value: "reputation", checked: true },
+                {
+                    name: `crypto-economic  ${chalk.gray("(Coming soon)")}`,
+                    value: "crypto-economic",
+                    disabled: "coming soon",
+                },
+                {
+                    name: `tee-attestation  ${chalk.gray("(Coming soon)")}`,
+                    value: "tee-attestation",
+                    disabled: "coming soon",
+                },
+            ],
         },
     ]);
 
-    let { agentWallet } = answers;
-    let generatedPrivateKey: string | undefined;
-
-    if (!agentWallet) {
-        const pk = generatePrivateKey();
-        generatedPrivateKey = pk;
-        const account = privateKeyToAccount(pk);
-        agentWallet = account.address;
-        console.log("\n🔑 Generated new wallet:", agentWallet);
-    }
+    // Always auto-generate a new wallet
+    const pk = generatePrivateKey();
+    const account = privateKeyToAccount(pk);
+    console.log("\n🔑 Generated new wallet:", account.address);
 
     return {
         ...answers,
-        agentWallet,
-        generatedPrivateKey,
+        agentWallet: account.address,
+        generatedPrivateKey: pk,
         a2aStreaming: answers.a2aStreaming ?? false,
-        preFundAmount: answers.preFundAmount?.trim() || "0.002",
     };
 }
 
@@ -248,7 +231,6 @@ export async function runImportAgent(): Promise<void> {
     // Build a WizardAnswers-compatible object for template generators
     const wizardLike: WizardAnswers = {
         archetype: "custom",
-        agentType: "generic",
         projectDir: answers.projectDir,
         agentName: answers.agentName,
         agentDescription: answers.agentDescription,
@@ -259,9 +241,6 @@ export async function runImportAgent(): Promise<void> {
         trustModels: answers.trustModels,
         agentWallet: answers.agentWallet,
         generatedPrivateKey: answers.generatedPrivateKey,
-        useMasterPinataJwt: answers.useMasterPinataJwt,
-        preFundFromMaster: answers.preFundFromMaster,
-        preFundAmount: answers.preFundAmount,
         skills: [],
         domains: [],
     };
