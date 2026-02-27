@@ -415,9 +415,9 @@ export function generateAgentTs(answers: WizardAnswers, systemPrompt?: string): 
     const llmModel = answers.llmModel ?? (answers.llmProvider === "claude" ? "claude-sonnet-4-6" : "gpt-4o-mini");
 
     // For OpenAI: skills are prepended to the system prompt as context.
-    //   - OASF skills (language/*, vision/*, etc.) = declared AI capabilities
+    //   - OASF skills (language/*, reasoning/*, etc.) = declared AI capabilities
     //   - Web3 skills (defi/*, smart_contracts/*, http URLs) = domain knowledge
-    // For Claude: skills go to .claude/CLAUDE.md (auto-loaded by Claude Code)
+    // For Claude: skills go to skills.md (reference it in Claude Code for context)
     const buildSystemPromptStr = (): string => {
         const base = systemPrompt ?? "You are a helpful AI assistant registered on the ERC-8004 protocol. Be concise and helpful.";
         if (answers.llmProvider !== "openai") return base;
@@ -573,7 +573,7 @@ export async function* streamResponse(userMessage: string, history: AgentMessage
  * API key is loaded from ANTHROPIC_API_KEY in .env
  *
  * To switch models: change the 'model' value in chat()
- * OASF skills context is in .claude/CLAUDE.md (auto-loaded by Claude Code)
+ * Web3 and OASF skills context is in skills.md at the project root
  */
 
 import Anthropic from '@anthropic-ai/sdk';
@@ -581,8 +581,8 @@ import Anthropic from '@anthropic-ai/sdk';
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 // System prompt — defines your agent's personality, expertise, and behavior.
-// Note: OASF on-chain skills are stored in .claude/CLAUDE.md, not here.
-// They are different from this system prompt — see .claude/CLAUDE.md for details.
+// Note: OASF on-chain skills and web3 knowledge are in skills.md (project root).
+// They are separate from this system prompt — see skills.md for details.
 const SYSTEM_PROMPT = ${JSON.stringify(systemPrompt)};
 
 // ============================================================================
@@ -734,6 +734,7 @@ ${answers.agentName.toLowerCase().replace(/\s+/g, "-")}/
 │   ├── agent.ts         # LLM logic${hasA2A ? "\n│   ├── a2a-server.ts   # A2A server\n│   └── a2a-client.ts   # A2A testing client" : ""}${
         hasMCP ? "\n│   └── mcp-server.ts   # MCP server" : ""
     }${extraStructure ? "\n" + extraStructure : ""}
+├── skills.md            # OASF + web3 skills context
 ├── .env                 # Environment variables (keep secret!)
 └── package.json
 \`\`\`

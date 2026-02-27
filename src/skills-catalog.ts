@@ -39,30 +39,19 @@ export const OASF_OFFICIAL_CATEGORIES: SkillCategory[] = [
         name: "🗣️  Language",
         skills: [
             { value: "language/text-generation", name: "Text Generation" },
-            { value: "language/text-completion", name: "Text Completion" },
             { value: "language/text-summarization", name: "Text Summarization" },
-            { value: "language/text-translation", name: "Text Translation" },
-        ],
-    },
-    {
-        name: "👁️  Vision",
-        skills: [
-            { value: "vision/image-generation", name: "Image Generation" },
-            { value: "vision/image-classification", name: "Image Classification" },
-            { value: "vision/object-detection", name: "Object Detection" },
-        ],
-    },
-    {
-        name: "🔊  Audio",
-        skills: [
-            { value: "audio/speech-to-text", name: "Speech to Text" },
-            { value: "audio/text-to-speech", name: "Text to Speech" },
         ],
     },
     {
         name: "🧠  Reasoning",
         skills: [
             { value: "reasoning/task-planning", name: "Task Planning" },
+        ],
+    },
+    {
+        name: "💻  Development",
+        skills: [
+            { value: "development/software-development", name: "Software Development" },
         ],
     },
 ];
