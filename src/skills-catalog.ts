@@ -5,6 +5,9 @@
  * relevant to Web3, DeFi, and blockchain-focused AI agents.
  *
  * Full taxonomy: https://schema.oasf.outshift.com/0.8.0
+ *
+ * The ETHSKILLS and ARBITRUM sections below are auto-generated.
+ * Run `npm run sync:skills` to refresh them from their source repos.
  */
 
 export interface SkillOption {
@@ -85,6 +88,46 @@ export const SKILL_CATEGORIES: SkillCategory[] = [
             { value: "nlp/translation", name: "Translation" },
         ],
     },
+    // BEGIN:ETHSKILLS
+    {
+        name: "Ethereum Dev (ethskills.com)",
+        skills: [
+        { value: "https://ethskills.com/addresses/SKILL.md", name: "Contract Addresses" },
+        { value: "https://ethskills.com/building-blocks/SKILL.md", name: "DeFi Building Blocks" },
+        { value: "https://ethskills.com/concepts/SKILL.md", name: "Core Concepts" },
+        { value: "https://ethskills.com/contracts/SKILL.md", name: "Contracts" },
+        { value: "https://ethskills.com/defi/SKILL.md", name: "DeFi Primitives" },
+        { value: "https://ethskills.com/frontend-playbook/SKILL.md", name: "Frontend Playbook" },
+        { value: "https://ethskills.com/frontend-ux/SKILL.md", name: "Frontend UX" },
+        { value: "https://ethskills.com/gas/SKILL.md", name: "Gas & Costs" },
+        { value: "https://ethskills.com/indexing/SKILL.md", name: "Indexing" },
+        { value: "https://ethskills.com/l2s/SKILL.md", name: "Layer 2s" },
+        { value: "https://ethskills.com/orchestration/SKILL.md", name: "Orchestration (SE2)" },
+        { value: "https://ethskills.com/qa/SKILL.md", name: "QA Checklist" },
+        { value: "https://ethskills.com/security/SKILL.md", name: "Security Patterns" },
+        { value: "https://ethskills.com/ship/SKILL.md", name: "Ship (End-to-End)" },
+        { value: "https://ethskills.com/standards/SKILL.md", name: "ERC Standards" },
+        { value: "https://ethskills.com/testing/SKILL.md", name: "Testing" },
+        { value: "https://ethskills.com/tools/SKILL.md", name: "Dev Tools" },
+        { value: "https://ethskills.com/wallets/SKILL.md", name: "Wallets" },
+        { value: "https://ethskills.com/why/SKILL.md", name: "Why Ethereum" },
+        ],
+    },
+    // END:ETHSKILLS
+    // BEGIN:ARBITRUM
+    {
+        name: "Arbitrum (arbitrum-dapp-skill)",
+        skills: [
+        { value: "https://raw.githubusercontent.com/hummusonrails/arbitrum-dapp-skill/main/SKILL.md", name: "Arbitrum dApp Development" },
+        { value: "https://raw.githubusercontent.com/hummusonrails/arbitrum-dapp-skill/main/references/deployment.md", name: "Deployment" },
+        { value: "https://raw.githubusercontent.com/hummusonrails/arbitrum-dapp-skill/main/references/frontend-integration.md", name: "Frontend Integration" },
+        { value: "https://raw.githubusercontent.com/hummusonrails/arbitrum-dapp-skill/main/references/local-devnode.md", name: "Local Devnode" },
+        { value: "https://raw.githubusercontent.com/hummusonrails/arbitrum-dapp-skill/main/references/solidity-contracts.md", name: "Solidity Contracts" },
+        { value: "https://raw.githubusercontent.com/hummusonrails/arbitrum-dapp-skill/main/references/stylus-rust-contracts.md", name: "Stylus Rust Contracts" },
+        { value: "https://raw.githubusercontent.com/hummusonrails/arbitrum-dapp-skill/main/references/testing.md", name: "Testing" },
+        ],
+    },
+    // END:ARBITRUM
 ];
 
 /** Flat list of all skills — useful for validation or display */

@@ -16,6 +16,7 @@
         "test": "vitest run",
         "test:watch": "vitest",
         "test:e2e": "tsx tests/e2e-a2a-client.ts",
+        "sync:skills": "tsx scripts/sync-skills.ts",
         "prepublishOnly": "npm run build"
     },
     "keywords": [
